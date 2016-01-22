@@ -1,6 +1,13 @@
 ﻿#using the httputility from system.web
 [System.Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null
 
+[string[]]$Platf = 'unknown','google android','apple ios', `
+                   'windows phone 7','rim blackberry','java j2me', `
+                   'palm webos','symbian os','windows mobile', `
+                   'generic smartphone'
+[string[]]$Types = 'unknown','mobile','landline'
+[string[]]$Capabilities = 'push','phone','sms'
+
 $ExecutionContext.SessionState.Module.OnRemove = {
     Remove-Module Duo_org
 }
@@ -47,6 +54,21 @@ function _testOrg()
         return $true
     } else {
         throw ("The Org:" + $org + " is not defined in the Duo_org.ps1 file")
+    }
+}
+
+function _numberValidator()
+{
+    param
+    (
+        [string]$number
+    )
+    #real validation to happen at some point...
+    if ($number.Length -gt 10)
+    {
+        return $true
+    } else {
+        throw ("Too Shorty :" + $number.Length)
     }
 }
 
@@ -347,7 +369,7 @@ function duoGetUsersAll()
     #>
     param
     (
-        [parameter(Mandatory=$true)][ValidateLength(1,100)][String]$dOrg
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg
     )
 
     [string]$method = "GET"
@@ -365,11 +387,47 @@ function duoGetUsersAll()
     return $request
 }
 
+function duoGetAdminsAll()
+{
+    <# 
+     .Synopsis
+      Used to get all Users from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-users
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all users from production duo Org
+      duoGetAllUsers -dOrg prod
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/admins"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
 function duoGetUsersbyuserName()
 {
     param
     (
-        [parameter(Mandatory=$true)][ValidateLength(1,100)][String]$dOrg,
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
         [parameter(Mandatory=$true)][ValidateLength(1,100)][String]$userName
     )
 
@@ -391,11 +449,35 @@ function duoGetUsersbyuserName()
     return $request
 }
 
+function duoGetPhonebyID()
+{
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+    )
+    
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/phones/" + $phone_id
+    
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+
+    return $request
+}
+
 function duoGetBypassForUser()
 {
     param
     (
-        [parameter(Mandatory=$true)][ValidateLength(1,100)][String]$dOrg,
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
         [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
         [parameter(Mandatory=$false)][ValidateRange(1,10)][int]$count=1,
         [parameter(Mandatory=$false)][ValidateRange(1,10)][int]$reuse_count=2,
@@ -411,6 +493,109 @@ function duoGetBypassForUser()
     
     [string]$method = "POST"
     [string]$path = "/admin/v1/users/" + $user_id + "/bypass_codes"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoCreatePhone()
+{
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [Validatescript({_numberValidator -number $_})][string]$number,
+        [string]$name,
+        [string]$extension,
+        [Validatescript({if ($Types.Contains($_.ToLower())) { $true } else { throw $Types }})][string]$type,
+        [Validatescript({if ($Platf.Contains($_.ToLower())) { $true } else { throw $Platf }})][string]$platform,
+        [string]$predelay,
+        [string]$postdelay
+    )
+    [string[]]$param = "number","name","extension","type","platform","predelay","postdelay"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            $parameters.Add($p,$(Get-Variable -Name $p -ValueOnly))
+        }
+    }
+    
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/phones"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoCreateActivationCode()
+{
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id,
+        [parameter(Mandatory=$false)][ValidateRange(1,86400)][int]$valid_secs=3600,
+        [parameter(Mandatory=$false)][ValidateSet("0","1")][string]$install
+    )
+    
+    [string[]]$param = "valid_secs","install"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            $parameters.Add($p,$(Get-Variable -Name $p -ValueOnly))
+        }
+    }
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/phones/" + $phone_id + "/activation_url"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoAssocPhoneToUser()
+{
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
+        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+    )
+    
+    $parameters = @{'phone_id'=$phone_id}
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/" + $user_id + "/phones"
 
     try
     {
