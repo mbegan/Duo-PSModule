@@ -373,6 +373,7 @@ function duoGetUser()
       # Get all users from "prod" duo Org
       duoGetUser -dOrg prod
 
+     .Example
       # Get specific user from default duo Org
       duoGetUser -user_id DUOxxxxxxxxxxxxxxxxx
 
@@ -505,6 +506,7 @@ function duoGetAdmin()
       # Get all admins from production duo Org
       duoGetAllUsers -dOrg prod
 
+     .Example
       # Get specific admins from default duo Org
       duoGetAllUsers -admin_id DEMxxxxxxxxxxxxxxxxx
     #>
@@ -552,6 +554,7 @@ function duoGetPhone()
       # Get all phones from "prod" duo Org
       duoGetAllUsers -dOrg prod
 
+     .Example
       # Get specific phone from default duo Org
       duoGetAllUsers -phone_id DPQxxxxxxxxxxxxxxxxx
     #>
@@ -677,6 +680,7 @@ function duoGetToken()
       # Get all users from "prod" duo Org
       duoGetToken -dOrg prod
 
+     .Example
       # Get specific token from default duo Org
       duoGetToken -token_id prod
 

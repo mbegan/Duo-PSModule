@@ -31,8 +31,9 @@ Write-Host $env:PSModulePath
                         etst = [Hashtable]@{
                                 iKey  = [string]"DIxxxxxxxxxxxxxxxxxx"
                                 sKeyEnc = [string]"Big Long protected string on 1 line here"
-                                apiHost = [string]"api-nnnnnxnx.duosecurity.com"                               }
-                        }
+                                apiHost = [string]"api-nnnnnxnx.duosecurity.com"
+							   }
+                       }
     ```
 ## if you'd like and added layer of protection to this key sitting in your file you can encrypt the string!
 # use helper function duoEncskey, paste your plaintext key into the dialog and replace the sKey setting with an sKeyEnc setting with the encrypted string as the value
