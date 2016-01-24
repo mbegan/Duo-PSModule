@@ -351,65 +351,44 @@ function _duoMakeCall()
     return $psobj
 }
 
-function duoGetUsersAll()
+
+###################Users###################
+
+function duoGetUser()
 {
     <# 
      .Synopsis
-      Used to get all Users from a given Duo Org
+      Used to get User(s) from a given Duo Org
 
      .Description
       Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-users
 
      .Parameter dOrg
-      string representing configured Duo Org
+      Optional string representing configured Duo Org, if omitted default org used
+
+     .Parameter user_id
+      string representing a duo user_id, if omitted all users are returned
 
      .Example
-      # Get all users from production duo Org
-      duoGetAllUsers -dOrg prod
+      # Get all users from "prod" duo Org
+      duoGetUser -dOrg prod
+
+      # Get specific user from default duo Org
+      duoGetUser -user_id DUOxxxxxxxxxxxxxxxxx
+
     #>
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id
     )
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/users"
-
-    try
+    if ($user_id)
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+        $path += "/" + $user_id
     }
-    catch
-    {
-        #Write-Warning $_.TargetObject
-        throw $_
-    }
-    return $request
-}
-
-function duoGetAdminsAll()
-{
-    <# 
-     .Synopsis
-      Used to get all Users from a given Duo Org
-
-     .Description
-      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-users
-
-     .Parameter dOrg
-      string representing configured Duo Org
-
-     .Example
-      # Get all users from production duo Org
-      duoGetAllUsers -dOrg prod
-    #>
-    param
-    (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg
-    )
-
-    [string]$method = "GET"
-    [string]$path = "/admin/v1/admins"
 
     try
     {
@@ -449,30 +428,6 @@ function duoGetUsersbyuserName()
     return $request
 }
 
-function duoGetPhonebyID()
-{
-    param
-    (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
-    )
-    
-    [string]$method = "GET"
-    [string]$path = "/admin/v1/phones/" + $phone_id
-    
-    try
-    {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
-    }
-    catch
-    {
-        #Write-Warning $_.TargetObject
-        throw $_
-    }
-
-    return $request
-}
-
 function duoGetBypassForUser()
 {
     param
@@ -500,6 +455,127 @@ function duoGetBypassForUser()
     }
     catch
     {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoAssocPhoneToUser()
+{
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
+        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+    )
+    
+    $parameters = @{'phone_id'=$phone_id}
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/" + $user_id + "/phones"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+###################Admins##################
+
+function duoGetAdmin()
+{
+    <# 
+     .Synopsis
+      Used to get Admin(s) from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-administrators
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all admins from production duo Org
+      duoGetAllUsers -dOrg prod
+
+      # Get specific admins from default duo Org
+      duoGetAllUsers -admin_id DEMxxxxxxxxxxxxxxxxx
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)][alias('aid','adminid')][ValidateLength(20,20)][String]$admin_id
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/admins"
+
+    if ($admin_id)
+    {
+        $path += "/" + $admin_id
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
+
+###################Phones##################
+function duoGetPhone()
+{
+    <# 
+     .Synopsis
+      Used to get phone(s) from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-phones
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all phones from "prod" duo Org
+      duoGetAllUsers -dOrg prod
+
+      # Get specific phone from default duo Org
+      duoGetAllUsers -phone_id DPQxxxxxxxxxxxxxxxxx
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+    )
+    
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/phones"
+    
+    if ($phone_id)
+    {
+        $path += "/" + $phone_id
+    }
+    
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
         throw $_
     }
 
@@ -583,30 +659,53 @@ function duoCreateActivationCode()
     return $request
 }
 
-function duoAssocPhoneToUser()
+###################Tokens##################
+
+function duoGetToken()
 {
+    <# 
+     .Synopsis
+      Used to get all Tokens from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-hardware-tokens
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all users from "prod" duo Org
+      duoGetToken -dOrg prod
+
+      # Get specific token from default duo Org
+      duoGetToken -token_id prod
+
+    #>
     param
     (
         [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
-        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+        [parameter(Mandatory=$false)][alias('tid','tokenid')][ValidateLength(20,20)][String]$token_id
     )
-    
-    $parameters = @{'phone_id'=$phone_id}
 
-    [string]$method = "POST"
-    [string]$path = "/admin/v1/users/" + $user_id + "/phones"
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/tokens"
+
+    if ($token_id)
+    {
+        $path += "/" + $token_id
+    }
 
     try
     {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
     }
     catch
     {
+        #Write-Warning $_.TargetObject
         throw $_
     }
-
     return $request
 }
+
 
 Export-ModuleMember -Function duo* -Alias duo*
