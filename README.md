@@ -22,7 +22,7 @@ Write-Host $env:PSModulePath
 # define the default Duo Org/Instance you want to use, useful if you have more than one.
 [string]$DuoDefaultOrg = "prod"
 
-[Hashtable]$oktaOrgs = @{
+[Hashtable]$DuoOrgs = @{
                         prod = [Hashtable]@{
                                 iKey  = [string]"DIxxxxxxxxxxxxxxxxxx"
                                 sKey = [string]"YourSecretsHere"
@@ -104,13 +104,9 @@ user_id       NoteProperty System.String user_id=DUxxxxxxxxxxxxxxxxx0
 
    ```
 
-Some very basic examples, it can do much more.
+Some very basic examples, it can do much more. I will continue to add commands and examples
 
-It supports pagination, so grabbing ALL of your users or groups is not a problem.
-
-I'll add more details on usage later, if you have a specific use case ask away i'll post an example.
-
-Also browse on over to [Okta community] (https://support.okta.com/help/community) for more discussion
+If you have a specific use case ask away i'll post an example.
 
 ### Current Commands
 - duoAssocPhoneToUser
