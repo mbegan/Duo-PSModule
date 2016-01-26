@@ -111,11 +111,14 @@ If you have a specific use case ask away i'll post an example.
 ### Current Commands
 - duoAssocPhoneToUser
 - duoCreateActivationCode
+- duoCreateAdmin
 - duoCreatePhone
+- duoDeletePhone
 - duoEncskey
 - duoGetAdmin
 - duoGetBypassForUser
 - duoGetPhone
 - duoGetToken
 - duoGetUser
-- duoGetUsersbyuserName
+- duoModifyAdmin
+- duoSendSMSCodes
