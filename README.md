@@ -35,8 +35,7 @@ Write-Host $env:PSModulePath
 							   }
                        }
     ```
-## if you'd like and added layer of protection to this key sitting in your file you can encrypt the string!
-# use helper function duoEncskey, paste your plaintext key into the dialog and replace the sKey setting with an sKeyEnc setting with the encrypted string as the value
+## if you'd like and added layer of protection to this key sitting in your file you can encrypt the string! After you've loaded the duo module you can use helper function **_duoEncskey_**. Paste your plaintext key into the dialog and paste the resulting output into the value for sKeyEnc in the configuration block (see etst above)
 
 #Example Installation:
 1. Open a command prompt
