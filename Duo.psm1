@@ -1,13 +1,6 @@
 ﻿#using the httputility from system.web
 [System.Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null
-
-[string[]]$Platf = 'unknown','google android','apple ios', `
-                   'windows phone 7','rim blackberry','java j2me', `
-                   'palm webos','symbian os','windows mobile', `
-                   'generic smartphone'
-[string[]]$Types = 'unknown','mobile','landline'
-[string[]]$Capabilities = 'push','phone','sms'
-
+                  
 $ExecutionContext.SessionState.Module.OnRemove = {
     Remove-Module Duo_org
 }
@@ -57,19 +50,95 @@ function _testOrg()
     }
 }
 
+function _numberNormalize()
+{
+    param
+    (
+        [string]$number
+    )
+
+    if ($number -ne $null)
+    {
+        $newPhone = "+" + $number.Replace("P","").Replace("+","").Replace(" ","").Replace("-","").Replace("(","").Replace(")","").Trim().ToString()
+    } else {
+        $newPhone = ""
+    }
+
+    return $newPhone
+}
+
 function _numberValidator()
 {
     param
     (
         [string]$number
     )
-    #real validation to happen at some point...
-    if ($number.Length -gt 10)
+
+    $number = _numberNormalize -number $number
+
+    #Starts with a + or  P (optional) followed by a single 1-9 digit followed by 1-14 additional digits
+    [regex]$isE164 = "\A(\+|P)?[1-9]\d{1,14}$"
+
+    #Duo does some real validation, we just sanity check it here.
+    if ($number -match $isE164)
     {
         return $true
     } else {
-        throw ("Too Shorty :" + $number.Length)
+        throw ("Number provided " + $number + " Doesn't appear to be E.164")
     }
+}
+
+function _emailValidator()
+{
+    param
+    (
+        [string]$email
+    )
+    #real validation to happen at some point...
+    $email = $email.ToLower().Trim()
+    [regex]$isEmail = "\A[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z"
+    
+    if ($email -match $isEmail)
+    {
+        return $true
+    } else {
+        throw ($email + " doesn't appear to be a valid email")
+    }
+}
+
+function _newPassword
+{
+    param
+    (
+        [Int32]$Length = 15,
+        [Int32]$MustIncludeSets = 3
+    )
+
+    $CharacterSets = @("ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwzyz","0123456789","!$-#")
+
+    $Random = New-Object Random
+
+    $Password = ""
+    $IncludedSets = ""
+    $IsNotComplex = $true
+    while ($IsNotComplex -or $Password.Length -lt $Length)
+    {
+        $Set = $Random.Next(0, 4)
+        if (!($IsNotComplex -and $IncludedSets -match "$Set" -And $Password.Length -lt ($Length - $IncludedSets.Length)))
+        {
+            if ($IncludedSets -notmatch "$Set")
+            {
+                $IncludedSets = "$IncludedSets$Set"
+            }
+            if ($IncludedSets.Length -ge $MustIncludeSets)
+            {
+                $IsNotcomplex = $false
+            }
+
+            $Password = "$Password$($CharacterSets[$Set].SubString($Random.Next(0, $CharacterSets[$Set].Length), 1))"
+        }
+    }
+    return $Password
 }
 
 #Function to Generate the AuthN header
@@ -181,7 +250,7 @@ function _duocanonicalizeParams()
 
         $ret.Sort([System.StringComparer]::Ordinal)
         [string]$canon_params  = [string]::Join("&", ($ret.ToArray()))
-        Write-Verbose $canon_params
+        Write-Debug $canon_params
     } else {
         $canon_params = ""
     }
@@ -204,7 +273,7 @@ function _duocanonicalizeRequest()
 
     [string[]]$lines = @($date.Trim(), $method.ToUpperInvariant().Trim(), $apih.ToLower().Trim(),$path.Trim(),$canon_params.Trim())
     [string]$canon  = [string]::Join("`n", $lines)
-    Write-Verbose ("`n" + $canon)
+    Write-Debug ("`n" + $canon)
     return $canon
 }
 
@@ -293,7 +362,7 @@ function _duoMakeCall()
     if ( ($method.ToUpper() -eq "POST") -or ($method.ToUpper() -eq "PUT") )
     {
         #make key value list, not json when done
-        Write-Verbose $canon_params
+        Write-Debug $canon_params
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($canon_params)
         $request.ContentType = 'application/x-www-form-urlencoded'
         $request.ContentLength = $bytes.Length
@@ -307,11 +376,6 @@ function _duoMakeCall()
     Write-Verbose $request.Headers['Authorization']
     Write-Verbose $request.Headers['X-Duo-Date']
 
-    if ($request.ContentType -ne $null)
-    {
-        Write-Verbose $request.ContentType
-    }
- 
     try
     {
         [System.Net.HttpWebResponse]$response = $request.GetResponse()
@@ -361,71 +425,80 @@ function duoGetUser()
       Used to get User(s) from a given Duo Org
 
      .Description
-      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-users
+      Returns collection of user Objects based on the provided parameters.
+      The user_id parameter will take precedence over username if both are provided.
 
      .Parameter dOrg
       Optional string representing configured Duo Org, if omitted default org used
 
      .Parameter user_id
-      string representing a duo user_id, if omitted all users are returned
+      string representing a duo user_id, if omitted all users are returned or users matching the username parameter
 
+     .Parameter username
+      string representing a duo user_id, if omitted all users are returned or users matching the user_id parameter
+      
      .Example
-      # Get all users from "prod" duo Org
       duoGetUser -dOrg prod
-
+      
+      Returns ALL users from the 'prod' duo org
+      
      .Example
-      # Get specific user from default duo Org
       duoGetUser -user_id DUOxxxxxxxxxxxxxxxxx
 
+      Returns a single user matching the user_id parameter passed
+      
+     .Example
+      duoGetUser -username user1
+      
+      Returns a single user matching the username parameter passed
+           
+     .LINK
+      https://duo.com/support/documentation/adminapi#retrieve-users
     #>
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$false)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [alias('uid','userid')]
+            [ValidateLength(20,20)]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$username
     )
+
+    [string[]]$param = "username"
+    $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/users"
     if ($user_id)
     {
         $path += "/" + $user_id
+    } else {
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
+        }
     }
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
     }
     catch
     {
         #Write-Warning $_.TargetObject
         throw $_
     }
-    return $request
-}
-
-function duoGetUsersbyuserName()
-{
-    param
-    (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][ValidateLength(1,100)][String]$userName
-    )
-
-    $parameters = @{username=$userName}
-    
-    [string]$method = "GET"
-    [string]$path = "/admin/v1/users"
-    
-    try
-    {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
-    }
-    catch
-    {
-        #Write-Warning $_.TargetObject
-        throw $_
-    }
-
     return $request
 }
 
@@ -433,11 +506,22 @@ function duoGetBypassForUser()
 {
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
-        [parameter(Mandatory=$false)][ValidateRange(1,10)][int]$count=1,
-        [parameter(Mandatory=$false)][ValidateRange(1,10)][int]$reuse_count=2,
-        [parameter(Mandatory=$false)][ValidateRange(600,86400)][int]$valid_secs=3600
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('uid','userid')]
+            [String]$user_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,10)]
+            [int]$count=1,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,10)]
+            [int]$reuse_count=2,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(600,86400)]
+            [int]$valid_secs=3600
     )
 
     $parameters = @{
@@ -466,9 +550,17 @@ function duoAssocPhoneToUser()
 {
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][alias('uid','userid')][ValidateLength(20,20)][String]$user_id,
-        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('uid','userid')]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id
     )
     
     $parameters = @{'phone_id'=$phone_id}
@@ -503,17 +595,24 @@ function duoGetAdmin()
       string representing configured Duo Org
 
      .Example
-      # Get all admins from production duo Org
       duoGetAllUsers -dOrg prod
 
+      returns a collection of all admins defined in the 'prod' org
+
      .Example
-      # Get specific admins from default duo Org
       duoGetAllUsers -admin_id DEMxxxxxxxxxxxxxxxxx
+
+      returns an admin with the admin_id parameter provided
     #>
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$false)][alias('aid','adminid')][ValidateLength(20,20)][String]$admin_id
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('aid','adminid')]
+            [String]$admin_id
     )
 
     [string]$method = "GET"
@@ -536,6 +635,126 @@ function duoGetAdmin()
     return $request
 }
 
+function duoCreateAdmin()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [Validatescript({_emailValidator -email $_})]
+            [string]$email,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(8,254)]
+            [string]$password=(_newPassword -Length 10),
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [string]$name,
+        [parameter(Mandatory=$true)]
+            [Validatescript({_numberValidator -number $_})]
+            [string]$phone,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('Owner','Administrator','Integration Manager',`
+                         'User Manager','Help Desk','Billing','Read-only' )]
+            [string]$role='Read-only'
+    )
+
+    if ($phone)
+    {
+        $phone = _numberNormalize -number $phone
+    }
+
+    [string[]]$param = "email","password","name","phone","role"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+    
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/admins"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoModifyAdmin()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('aid','adminid')]
+            [String]$admin_id,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [string]$name,
+        [parameter(Mandatory=$false)]
+            [Validatescript({_numberValidator -number $_})]
+            [string]$phone,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(8,254)]
+            [string]$password,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('Owner','Administrator','Integration Manager',`
+                         'User Manager','Help Desk','Billing','Read-only' )]
+            [string]$role
+    )
+
+    if ($phone)
+    {
+        $phone = _numberNormalize -number $phone
+    }
+    
+    [string[]]$param = "name","phone","password","role"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/admins/" + $admin_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
 
 ###################Phones##################
 function duoGetPhone()
@@ -560,25 +779,50 @@ function duoGetPhone()
     #>
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$false)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id,
+        [parameter(Mandatory=$false)]
+            [Validatescript({_numberValidator -number $_})]
+            [string]$number,
+        [parameter(Mandatory=$false)]
+            [string]$extension
     )
-    
+    [string[]]$param = "number","extension"
+    $parameters = New-Object System.Collections.Hashtable
+
     [string]$method = "GET"
     [string]$path = "/admin/v1/phones"
     
+    #If a phone_id was specified get that phone_id
     if ($phone_id)
     {
         $path += "/" + $phone_id
+        $parameters = @{}
+    } else {
+    #Check to see if additional search paramters were passed
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
+        }
     }
     
     try
     {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
     }
     catch
     {
-        #Write-Warning $_.TargetObject
         throw $_
     }
 
@@ -589,15 +833,42 @@ function duoCreatePhone()
 {
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [Validatescript({_numberValidator -number $_})][string]$number,
-        [string]$name,
-        [string]$extension,
-        [Validatescript({if ($Types.Contains($_.ToLower())) { $true } else { throw $Types }})][string]$type,
-        [Validatescript({if ($Platf.Contains($_.ToLower())) { $true } else { throw $Platf }})][string]$platform,
-        [string]$predelay,
-        [string]$postdelay
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [Validatescript({_numberValidator -number $_})]
+            [string]$number,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [string]$name,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(3,10)]
+            [string]$extension,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('unknown','mobile','landline')]
+            [string]$type,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('unknown','google android','apple ios',`
+                         'windows phone 7','rim blackberry','java j2me',`
+                         'palm webos','symbian os','windows mobile',`
+                         'generic smartphone')]
+            [string]$platform,
+        [parameter(Mandatory=$false)]
+            [string]$predelay,
+        [parameter(Mandatory=$false)]
+            [string]$postdelay,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id
     )
+
+    if ($number)
+    {
+        $number = _numberNormalize -number $number
+    }
+
     [string[]]$param = "number","name","extension","type","platform","predelay","postdelay"
 
     $parameters = New-Object System.Collections.Hashtable
@@ -606,16 +877,52 @@ function duoCreatePhone()
     {
         if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
         {
-            $parameters.Add($p,$(Get-Variable -Name $p -ValueOnly))
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
         }
     }
     
     [string]$method = "POST"
+
     [string]$path = "/admin/v1/phones"
+    if ($phone_id)
+    {
+        $path += "/" + $phone_id
+    }
 
     try
     {
         $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeletePhone()
+{
+    param
+    (
+       [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/phones/" + $phone_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
     }
     catch
     {
@@ -629,12 +936,20 @@ function duoCreateActivationCode()
 {
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)][alias('pid','phoneid')][ValidateLength(20,20)][String]$phone_id,
-        [parameter(Mandatory=$false)][ValidateRange(1,86400)][int]$valid_secs=3600,
-        [parameter(Mandatory=$false)][ValidateSet("0","1")][string]$install
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,604800)]
+            [int]$valid_secs=3600,
+        [parameter(Mandatory=$false)]
+            [switch]$install
     )
-    
+
     [string[]]$param = "valid_secs","install"
 
     $parameters = New-Object System.Collections.Hashtable
@@ -643,7 +958,10 @@ function duoCreateActivationCode()
     {
         if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
         {
-            $parameters.Add($p,$(Get-Variable -Name $p -ValueOnly))
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
         }
     }
 
@@ -653,6 +971,34 @@ function duoCreateActivationCode()
     try
     {
         $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoSendSMSCodes()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id
+    )
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/phones/" + $phone_id + "/send_sms_passcodes"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
     }
     catch
     {
@@ -687,8 +1033,13 @@ function duoGetToken()
     #>
     param
     (
-        [parameter(Mandatory=$false)][ValidateLength(1,100)][String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$false)][alias('tid','tokenid')][ValidateLength(20,20)][String]$token_id
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('tid','tokenid')]
+            [String]$token_id
     )
 
     [string]$method = "GET"
