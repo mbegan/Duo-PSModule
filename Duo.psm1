@@ -464,7 +464,7 @@ function duoGetUser()
             [alias('uid','userid')]
             [ValidateLength(20,20)]
             [String]$user_id,
-        [parameter(Mandatory=$true)]
+        [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
             [String]$username
     )
@@ -502,7 +502,7 @@ function duoGetUser()
     return $request
 }
 
-function duoGetBypassForUser()
+function duoGetUserBypass()
 {
     param
     (
@@ -546,7 +546,7 @@ function duoGetBypassForUser()
     return $request
 }
 
-function duoAssocPhoneToUser()
+function duoAssocUserToPhone()
 {
     param
     (
@@ -567,6 +567,40 @@ function duoAssocPhoneToUser()
 
     [string]$method = "POST"
     [string]$path = "/admin/v1/users/" + $user_id + "/phones"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoAssocUserToToken()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('uid','userid')]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('tid','tokenid')]
+            [String]$token_id
+    )
+    
+    $parameters = @{'token_id'=$token_id}
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/" + $user_id + "/tokens"
 
     try
     {
@@ -802,7 +836,6 @@ function duoGetPhone()
     if ($phone_id)
     {
         $path += "/" + $phone_id
-        $parameters = @{}
     } else {
     #Check to see if additional search paramters were passed
         foreach ($p in $param)
@@ -1039,8 +1072,17 @@ function duoGetToken()
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('tid','tokenid')]
-            [String]$token_id
+            [String]$token_id,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('h6','h8','yk','d1')]
+            [string]$type,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(6,32)]
+            [string]$serial
     )
+
+    [string[]]$param = "type","serial"
+    $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/tokens"
@@ -1048,11 +1090,27 @@ function duoGetToken()
     if ($token_id)
     {
         $path += "/" + $token_id
+    } else {
+        #Check to see if additional search paramters were passed
+        if ( (($type) -and (!$serial)) -or ((!$type) -and ($serial)) )
+        {
+            Write-Warning ("Both Type and Serial are required together")
+        }
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
+        }
     }
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
     }
     catch
     {
@@ -1062,5 +1120,105 @@ function duoGetToken()
     return $request
 }
 
+function duoCreateToken()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('h6','h8','yk','d1')]
+            [string]$type,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(6,32)]
+            [string]$serial,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [string]$secret,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [string]$counter,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(12,12)]
+            [string]$private_id,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(32,32)]
+            [string]$aes_key,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('tid','tokenid')]
+            [String]$token_id
+    )
+
+    if ($number)
+    {
+        $number = _numberNormalize -number $number
+    }
+
+    [string[]]$param = "type","serial","secret","counter","private_id","aes_key"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+    
+    [string]$method = "POST"
+
+    [string]$path = "/admin/v1/tokens"
+    #non existent update proviso...
+    if ($token_id)
+    {
+        $path += "/" + $token_id
+        Write-Warning ("Updating existing token's doesn't work")
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeleteToken()
+{
+    param
+    (
+       [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('tid','tokenid')]
+            [String]$token_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/tokens/" + $token_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
 
 Export-ModuleMember -Function duo* -Alias duo*
