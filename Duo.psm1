@@ -676,27 +676,46 @@ function duoCreateAdmin()
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
             [String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)]
+        [parameter(Mandatory=$false)]
             [Validatescript({_emailValidator -email $_})]
             [string]$email,
         [parameter(Mandatory=$false)]
             [ValidateLength(8,254)]
-            [string]$password=(_newPassword -Length 10),
-        [parameter(Mandatory=$true)]
+            [string]$password,
+        [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
             [string]$name,
-        [parameter(Mandatory=$true)]
+        [parameter(Mandatory=$false)]
             [Validatescript({_numberValidator -number $_})]
             [string]$phone,
         [parameter(Mandatory=$false)]
-            [ValidateSet('Owner','Administrator','Integration Manager',`
+            [ValidateSet('Owner','Administrator','Application Manager',`
                          'User Manager','Help Desk','Billing','Read-only' )]
-            [string]$role='Read-only'
+            [string]$role,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('aid','adminid')]
+            [String]$admin_id
     )
 
     if ($phone)
     {
         $phone = _numberNormalize -number $phone
+    }
+
+    [string]$path = "/admin/v1/admins"
+
+    if ($admin_id)
+    {
+        Write-Verbose ("Updating: " + $admin_id)
+        $path += "/" + $admin_id
+    } else {
+        if ( ($email) -and ($password) -and ($name) -and ($phone) )
+        {
+            Write-Verbose ("Creating: " + $name)
+        } else {
+            throw ("During Creation email, password, name and phone are required")
+        }
     }
 
     [string[]]$param = "email","password","name","phone","role"
@@ -715,68 +734,6 @@ function duoCreateAdmin()
     }
     
     [string]$method = "POST"
-    [string]$path = "/admin/v1/admins"
-
-    try
-    {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
-    }
-    catch
-    {
-        throw $_
-    }
-
-    return $request
-}
-
-function duoModifyAdmin()
-{
-    param
-    (
-        [parameter(Mandatory=$false)]
-            [ValidateLength(1,100)]
-            [String]$dOrg=$DuoDefaultOrg,
-        [parameter(Mandatory=$true)]
-            [ValidateLength(20,20)]
-            [alias('aid','adminid')]
-            [String]$admin_id,
-        [parameter(Mandatory=$false)]
-            [ValidateLength(1,100)]
-            [string]$name,
-        [parameter(Mandatory=$false)]
-            [Validatescript({_numberValidator -number $_})]
-            [string]$phone,
-        [parameter(Mandatory=$false)]
-            [ValidateLength(8,254)]
-            [string]$password,
-        [parameter(Mandatory=$false)]
-            [ValidateSet('Owner','Administrator','Integration Manager',`
-                         'User Manager','Help Desk','Billing','Read-only' )]
-            [string]$role
-    )
-
-    if ($phone)
-    {
-        $phone = _numberNormalize -number $phone
-    }
-    
-    [string[]]$param = "name","phone","password","role"
-
-    $parameters = New-Object System.Collections.Hashtable
-
-    foreach ($p in $param)
-    {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
-        {
-            if ((Get-Variable -Name $p -ValueOnly) -ne "")
-            {
-                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
-            }
-        }
-    }
-
-    [string]$method = "POST"
-    [string]$path = "/admin/v1/admins/" + $admin_id
 
     try
     {
