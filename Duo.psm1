@@ -517,10 +517,10 @@ function duoGetUserBypass()
             [ValidateRange(1,10)]
             [int]$count=1,
         [parameter(Mandatory=$false)]
-            [ValidateRange(1,10)]
-            [int]$reuse_count=2,
+            [ValidateRange(0,100)]
+            [int]$reuse_count=5,
         [parameter(Mandatory=$false)]
-            [ValidateRange(600,86400)]
+            [ValidateRange(0,86400)]
             [int]$valid_secs=3600
     )
 
