@@ -502,6 +502,37 @@ function duoGetUser()
     return $request
 }
 
+function duoDeleteUser()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [alias('uid','userid')]
+            [ValidateLength(20,20)]
+            [String]$user_id
+    )
+
+    [string[]]$param = "username"
+    $parameters = New-Object System.Collections.Hashtable
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/users/" + $user_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
 function duoGetUserBypass()
 {
     param
