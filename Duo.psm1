@@ -778,6 +778,34 @@ function duoCreateAdmin()
     return $request
 }
 
+function duoDeleteAdmin()
+{
+    param
+    (
+       [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('aid','adminid')]
+            [String]$admin_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/admins/" + $admin_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 ###################Phones##################
 function duoGetPhone()
 {
@@ -1075,6 +1103,8 @@ function duoGetToken()
     [string]$method = "GET"
     [string]$path = "/admin/v1/tokens"
 
+
+
     if ($token_id)
     {
         $path += "/" + $token_id
@@ -1084,6 +1114,12 @@ function duoGetToken()
         {
             Write-Warning ("Both Type and Serial are required together")
         }
+
+        if ($serial)
+        {
+            $serial = $serial.PadLeft(12,'0')
+        }
+
         foreach ($p in $param)
         {
             if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
