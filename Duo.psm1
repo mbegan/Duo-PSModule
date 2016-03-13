@@ -211,17 +211,7 @@ function _duoEncode64()
 function _duoRFC2822Date()
 {
     $date = Get-Date
-    [string]$date_string = $date.ToString("ddd, dd MMM yyyy HH:mm:ss",([System.Globalization.CultureInfo]::InvariantCulture))
-    [int]$offset = [System.TimeZoneInfo]::Local.BaseUtcOffset.Hours
-    if ($offset -lt 0)
-    {
-        $offset *= -1
-        [string]$zone = "-"
-    } else {
-        [string]$zone = "+"
-    }
-    $zone += $offset.ToString(([System.Globalization.CultureInfo]::InvariantCulture)).PadLeft(2,'0')
-    $date_string += " " + $zone.PadRight(5,'0')
+    [string]$date_string = $date.ToUniversalTime().ToString("ddd, dd MMM yyyy HH:mm:ss -0000",([System.Globalization.CultureInfo]::InvariantCulture))
     return $date_string
 }
 
