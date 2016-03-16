@@ -635,6 +635,39 @@ function duoAssocUserToToken()
     return $request
 }
 
+function duoAssocUserToGroup()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('uid','userid')]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('gid','groupid')]
+            [String]$group_id
+    )
+    
+    $parameters = @{'group_id'=$group_id}
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/" + $user_id + "/groups"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
 ###################Admins##################
 
 function duoGetAdmin()
@@ -1234,5 +1267,66 @@ function duoDeleteToken()
 
     return $request
 }
+
+
+###################Groups##################
+
+function duoGetGroup()
+{
+    <# 
+     .Synopsis
+      Used to get all Tokens from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-hardware-tokens
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all users from "prod" duo Org
+      duoGetToken -dOrg prod
+
+     .Example
+      # Get specific token from default duo Org
+      duoGetToken -token_id prod
+
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('gid','groupid')]
+            [String]$group_id
+    )
+
+    [string[]]$param = "type","serial"
+    $parameters = New-Object System.Collections.Hashtable
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/groups"
+
+
+
+    if ($group_id)
+    {
+        $path += "/" + $group_id
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
 
 Export-ModuleMember -Function duo* -Alias duo*
