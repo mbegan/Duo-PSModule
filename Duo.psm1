@@ -1100,7 +1100,7 @@ function duoGetToken()
 
      .Example
       # Get specific token from default duo Org
-      duoGetToken -token_id prod
+      duoGetToken -token_id DH9R0GH2SX5EZ5LL550K
 
     #>
     param
@@ -1275,10 +1275,10 @@ function duoGetGroup()
 {
     <# 
      .Synopsis
-      Used to get all Tokens from a given Duo Org
+      Used to get all Groups from a given Duo Org
 
      .Description
-      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-hardware-tokens
+      Returns a collection of user Objects See: https://duo.com/docs/adminapi#retrieve-groups
 
      .Parameter dOrg
       string representing configured Duo Org
@@ -1289,7 +1289,7 @@ function duoGetGroup()
 
      .Example
       # Get specific token from default duo Org
-      duoGetToken -token_id prod
+      duoGetToken -group_id DG5MF92W6CBRPZKJ18CS
 
     #>
     param
@@ -1325,6 +1325,34 @@ function duoGetGroup()
         #Write-Warning $_.TargetObject
         throw $_
     }
+    return $request
+}
+
+function duoDeleteGroup()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('gid','groupid')]
+            [String]$group_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/groups/" + $group_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
     return $request
 }
 
