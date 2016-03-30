@@ -50,18 +50,18 @@ function _testOrg()
     }
 }
 
-function _numberNormalize()
+function duonumberNormalize()
 {
     param
     (
         [string]$number
     )
 
-    if ($number -ne $null)
+    if ( [string]::IsNullOrWhiteSpace($number) )
     {
-        $newPhone = "+" + $number.Replace("P","").Replace("+","").Replace(" ","").Replace("-","").Replace("(","").Replace(")","").Trim().ToString()
-    } else {
         $newPhone = ""
+    } else {
+        $newPhone = "+" + $number.Replace("P","").Replace("+","").Replace(" ","").Replace("-","").Replace("(","").Replace(")","").Trim().ToString()
     }
 
     return $newPhone
@@ -74,7 +74,7 @@ function _numberValidator()
         [string]$number
     )
 
-    $number = _numberNormalize -number $number
+    $number = duonumberNormalize -number $number
 
     #Starts with a + or  P (optional) followed by a single 1-9 digit followed by 1-14 additional digits
     [regex]$isE164 = "\A(\+|P)?[1-9]\d{1,14}$"
@@ -754,7 +754,7 @@ function duoCreateAdmin()
 
     if ($phone)
     {
-        $phone = _numberNormalize -number $phone
+        $phone = duonumberNormalize -number $phone
     }
 
     [string]$path = "/admin/v1/admins"
@@ -938,7 +938,7 @@ function duoCreatePhone()
 
     if ($number)
     {
-        $number = _numberNormalize -number $number
+        $number = duonumberNormalize -number $number
     }
 
     [string[]]$param = "number","name","extension","type","platform","predelay","postdelay"
@@ -1200,7 +1200,7 @@ function duoCreateToken()
 
     if ($number)
     {
-        $number = _numberNormalize -number $number
+        $number = duonumberNormalize -number $number
     }
 
     [string[]]$param = "type","serial","secret","counter","private_id","aes_key"
