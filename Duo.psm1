@@ -141,6 +141,50 @@ function _newPassword
     return $Password
 }
 
+function _duoTimeAsAByteArray()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+         [int]$timeWindow=30
+    )
+    
+    $epoch = Get-Date "1970-01-01T00:00:00"
+    $now_utc = (Get-Date).ToUniversalTime()
+    $span = New-TimeSpan -Start $epoch -End $now_utc
+    $interval = [System.Math]::Floor($span.TotalSeconds / $timeWindow)
+    $interval = [convert]::ToInt64($interval)
+    $goodTill = $epoch.AddSeconds( ($interval + 1) * $timeWindow )
+    $diff = New-TimeSpan -Start (Get-Date) -End $goodTill.ToLocalTime()
+    Write-Verbose("Code generated good till: " + $goodTill.ToLocalTime() + " or " +  $diff.TotalSeconds  +  " seconds from now")
+    $byteArray = [System.BitConverter]::GetBytes($interval)
+    [array]::Reverse($byteArray)
+    return $byteArray
+}
+
+function _duoHexToAByteArray()
+{
+    param
+    (
+        [string]$hexString
+    )
+    $byteArray = New-Object Byte[](16)
+    $hexString = $hexString.ToUpper().Replace('0X','').Replace(' ','')
+    $hexParts = $hexString -split "(?<=\G\w{2})(?=\w{2})"
+    if ($hexParts.Count -gt 16)
+    {
+        throw("Hex String too large " + $hexParts.Count)
+    }
+    $c = 0
+    foreach ($hex in $hexParts)
+    {
+        $byte = [convert]::ToByte($hex, 16)
+        $byteArray[$c] = $byte
+        $c++
+    }
+    return $byteArray
+}
+
 #Function to Generate the AuthN header
 #canonicalizes the request, duocanonicalizeRequest
 #generates Hmac Sha1 signature, duoHmacSign
@@ -1354,6 +1398,66 @@ function duoDeleteGroup()
     }
 
     return $request
+}
+
+###################Soft TOTP Client##################
+
+function duoSoftTotpClient()
+{
+<# 
+    .Synopsis
+     Used to generate timebased HOTP's according to RFC4226 guidelines
+
+    .Description
+     Returns a 6 or 8 digit OTP (default 6) using a provided timewindow (default 30 seconds) and secret expressed in hex string
+
+    .Parameter timeWindow
+     int expressing the number of seconds used in the timewindow (30 is default)
+
+    .Parameter length
+     int expressing the length of otp to be generated valid values are 6 or 8 (6 is default)
+
+    .Parameter secret
+     string expressing the secret expressed as case insensitive hex string "0x0f0f0f0f0f0ff0f0f0f0f0f0f0f00faa" or "0f0f0f0f0f0ff0f0f0f0f0f0f0f00faa"
+
+    .Example
+     # Get an 8 digit otp using a secret
+     duoSoftTotpClient -length 8 -secret 0f0f0f0f0f0ff0f0f0f0f0f0f0f00faa
+     17557076
+#>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [int]$timeWindow=30,
+        [parameter(Mandatory=$false)]
+            [ValidateSet(6,8)]
+            [int]$length=6,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(32,34)]
+            [String]$secret
+    )
+
+    $hmac = New-Object -TypeName System.Security.Cryptography.HMACSHA1
+    $hmac.Key = _duoHexToAByteArray -hexString $secret
+
+    $timeBytes = _duoTimeAsAByteArray -timeWindow $timeWindow
+    $resultingHash = $hmac.ComputeHash($timeBytes)
+    
+    #offset is the lower 4 bits of the last byte
+    $offset = $resultingHash[($randHash.Length-1)] -band 0xf
+
+    #Clear the top bit (avoid signed/unsigned issues) and convert to decimal
+    $decimalOTP = ($resultingHash[$offset] -band 0x7f) * [System.Math]::Pow(2, 24)
+
+    #add decimal values of of remaining bytes
+    $decimalOTP += ($resultingHash[$offset + 1] -band 0xff) * [System.Math]::Pow(2, 16)
+    $decimalOTP += ($resultingHash[$offset + 2] -band 0xff) * [System.Math]::Pow(2, 8)
+    $decimalOTP += ($resultingHash[$offset + 3] -band 0xff)
+
+    $modNumber = [math]::pow(10, $length)
+    $otp = $decimalOTP % $modNumber
+    $otp = $otp.ToString().PadLeft($length,'0')
+    return $otp
 }
 
 
