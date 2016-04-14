@@ -129,6 +129,7 @@ If you have a specific use case ask away i'll post an example.
 - duoGetToken
 - duoGetUser
 - duoGetUserBypass
+- duoModifyUser
 - duonumberNormalize
 - duoSendSMSCodes
 - duoSoftTotpClient
