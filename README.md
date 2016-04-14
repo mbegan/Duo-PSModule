@@ -115,6 +115,7 @@ If you have a specific use case ask away i'll post an example.
 - duoCreatePhone
 - duoDeletePhone
 - duoEncskey
+- duoEnrollUser
 - duoGetAdmin
 - duoGetBypassForUser
 - duoGetPhone
