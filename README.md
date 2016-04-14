@@ -122,6 +122,7 @@ If you have a specific use case ask away i'll post an example.
 - duoDeleteToken
 - duoDeleteUser
 - duoEncskey
+- duoEnrollUser
 - duoGetAdmin
 - duoGetGroup
 - duoGetPhone
