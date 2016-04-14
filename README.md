@@ -109,17 +109,25 @@ Some very basic examples, it can do much more. I will continue to add commands a
 If you have a specific use case ask away i'll post an example.
 
 ### Current Commands
-- duoAssocPhoneToUser
+- duoAssocUserToGroup
+- duoAssocUserToPhone
+- duoAssocUserToToken
 - duoCreateActivationCode
 - duoCreateAdmin
 - duoCreatePhone
+- duoCreateToken
+- duoDeleteAdmin
+- duoDeleteGroup
 - duoDeletePhone
+- duoDeleteToken
+- duoDeleteUser
 - duoEncskey
-- duoEnrollUser
 - duoGetAdmin
-- duoGetBypassForUser
+- duoGetGroup
 - duoGetPhone
 - duoGetToken
 - duoGetUser
-- duoModifyAdmin
+- duoGetUserBypass
+- duonumberNormalize
 - duoSendSMSCodes
+- duoSoftTotpClient
