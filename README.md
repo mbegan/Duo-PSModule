@@ -35,7 +35,7 @@ Write-Host $env:PSModulePath
 							   }
                        }
     ```
-## if you'd like and added layer of protection to this key sitting in your file you can encrypt the string! After you've loaded the duo module you can use helper function **_duoEncskey_**. Paste your plaintext key into the dialog and paste the resulting output into the value for sKeyEnc in the configuration block (see etst above)
+#### if you'd like and added layer of protection to this key sitting in your file you can encrypt the string! After you've loaded the duo module you can use helper function **_duoEncskey_**. Paste your plaintext key into the dialog and paste the resulting output into the value for sKeyEnc in the configuration block (see etst above)
 
 #Example Installation:
 1. Open a command prompt
@@ -104,9 +104,9 @@ user_id       NoteProperty System.String user_id=DUxxxxxxxxxxxxxxxxx0
 
    ```
 
-Some very basic examples, it can do much more. I will continue to add commands and examples
+The commands implimented are listed below, if you have a specific use case ask away i'll post an example.  If you are handy with powershell feel free to impliment additional functionality and send a PR.
 
-If you have a specific use case ask away i'll post an example.
+#### NOTE in most cases the Create* functions also serve to Modify if the object identifier of an existing object is provided
 
 ### Current Commands
 - duoAssocUserToGroup
