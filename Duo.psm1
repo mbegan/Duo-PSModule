@@ -536,6 +536,45 @@ function duoGetUser()
     return $request
 }
 
+function duoEnrollUser()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [Validatescript({_emailValidator -email $_})]
+            [string]$email,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$username,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(0,2592000)]
+            [int]$valid_secs=2592000
+    )
+
+    $parameters = @{
+                    username    = $userName
+                    email       = $email
+                    valid_secs  = $valid_secs
+                   }
+    
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/enroll"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 function duoDeleteUser()
 {
     param
