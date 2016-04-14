@@ -751,6 +751,79 @@ function duoAssocUserToGroup()
 
     return $request
 }
+
+function duoCreateUser()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [alias('uid','userid')]
+            [ValidateLength(20,20)]
+            [String]$user_id,
+        [parameter(Mandatory=$false)]
+            [Validatescript({_emailValidator -email $_})]
+            [string]$email,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$username,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$realname,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('active','disabled','bypass')]
+            [String]$status,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$notes
+    )
+
+   
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users"
+
+    [string[]]$param = "email","username","realname","status","notes"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    if ($user_id)
+    {
+        Write-Verbose ("Updating: " + $user_id)
+        $path += "/" + $user_id
+    } else {
+        if ($username)
+        {
+            Write-Verbose ("Creating: " + $username)
+        } else {
+            throw ("During Creation username is required")
+        }
+    }
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 ###################Admins##################
 
 function duoGetAdmin()

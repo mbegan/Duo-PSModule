@@ -116,6 +116,7 @@ If you have a specific use case ask away i'll post an example.
 - duoCreateAdmin
 - duoCreatePhone
 - duoCreateToken
+- duoCreateUser
 - duoDeleteAdmin
 - duoDeleteGroup
 - duoDeletePhone
