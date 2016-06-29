@@ -36,6 +36,35 @@ function duoEncskey()
     return (ConvertFrom-SecureString -SecureString (Read-Host -AsSecureString -Prompt "PlainText Secret Key"))
 }
 
+function duoGetUnixTS()
+{
+    param
+    (
+        $date,
+        $daysAgo
+    )
+
+    $epoch = Get-Date -Date "01/01/1970"
+
+    if ($date)
+    {
+        try
+        {
+            $ts = New-TimeSpan -Start $epoch -End $date
+        }
+        catch
+        {
+            throw $_.Exception.Message
+        }
+    } elseif ($daysAgo)
+    {
+        $date = Get-Date
+        $ts = New-TimeSpan -Start $epoch -End ($date.AddDays(-$daysAgo))
+    }
+
+    return [System.Math]::Truncate($ts.TotalSeconds)
+}
+
 function _testOrg()
 {
     param
@@ -1459,9 +1488,6 @@ function duoGetGroup()
             [String]$group_id
     )
 
-    [string[]]$param = "type","serial"
-    $parameters = New-Object System.Collections.Hashtable
-
     [string]$method = "GET"
     [string]$path = "/admin/v1/groups"
 
@@ -1474,7 +1500,7 @@ function duoGetGroup()
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
     }
     catch
     {
@@ -1509,6 +1535,141 @@ function duoDeleteGroup()
         throw $_
     }
 
+    return $request
+}
+
+
+###################Logs##################
+
+function duoGetLog()
+{
+    <# 
+     .Synopsis
+      Used to get logs of a given type
+
+     .Description
+      Returns a collection of log entries See: https://duo.com/docs/adminapi#logs
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all authentication logs from "prod" duo Org
+      duoGetLog -dOrg prod -log authentication
+
+     .Example
+      # Get all authentication logs recieved on or after a give unixtimestamp
+      duoGetLog -mintime 1346172697 -log authentication
+    #>
+
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('authentication','administrator','telephony')]
+            [String]$log,
+        [parameter(Mandatory=$false)]
+            [int]$mintime
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/logs/" + $log
+
+
+    [string[]]$param = "mintime"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
+###################Info##################
+
+function duoGetInfo()
+{
+    <# 
+     .Synopsis
+      Used to get info of a given type
+
+     .Description
+      Returns an information object See: https://duo.com/docs/adminapi#account-info
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get summary info from "prod" duo Org
+      duoGetInfo -dOrg prod -info summary
+
+     .Example
+      # Get Telephony Credits Used Report since unixtimestamp
+      duoGetInfo -mintime 1346172697 -info telephony_credits_used
+    #>
+
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('summary','telephony_credits_used','authentication_attempts','user_authentication_attempts')]
+            [String]$info,
+        [parameter(Mandatory=$false)]
+            [int]$mintime,
+        [parameter(Mandatory=$false)]
+            [int]$maxtime
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/info/" + $info
+
+
+    [string[]]$param = "mintime","maxtime"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
     return $request
 }
 
