@@ -1733,5 +1733,126 @@ function duoSoftTotpClient()
     return $otp
 }
 
+################### Integrations ##################
+
+function duoCreateIntegration()
+{
+#Creates integrations when supplied with a valid name and integration type. List of valid integration types available at https://duo.com/docs/adminapi#integrations
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1, 100)]
+            [string]$name,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$type
+    )
+
+    $parameters = @{
+                        name  = $name
+                        type  = $type
+                   }
+    
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/integrations"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoRetrieveIntegrations()
+{
+#Retrieves list of all integrations. No parameters accepted by API.
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/integrations"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoRetrieveIntegration()
+{
+#Retrieves a specified integration using its integration key.
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$iKey
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/integrations/$iKey"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeleteIntegration()
+{
+#Deletes a specified integration when supplied with its integration key
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$iKey
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/integrations/$iKey"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+        
+
+##############################################
 
 Export-ModuleMember -Function duo* -Alias duo*
