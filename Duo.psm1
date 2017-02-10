@@ -372,6 +372,14 @@ function _duoBuildCall()
          }
 
     $result = _duoMakeCall -method $method -resource $url -AuthHeaders $AuthHeaders -canon_params $canon_params
+    if ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
+    {
+        foreach ($key in $parameters.Keys)
+        {
+            Write-Host("`t") -NoNewline
+            Write-Host($key + "`t=>`t" + $parameters[$key]) -ForegroundColor Cyan
+        }
+    }
     if ($result.stat -eq 'OK')
     {
         return $result.response
@@ -1538,6 +1546,291 @@ function duoDeleteGroup()
     return $request
 }
 
+###################Integrations##################
+
+function duoGetIntegration()
+{
+    <#
+     .Synopsis
+      Used to get all integrations from a given Duo Org
+
+     .Description
+      Returns a collection of integrations Objects See: https://duo.com/docs/adminapi#integrations
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all integrations from "prod" duo Org
+      duoGetIntegration -dOrg prod
+
+     .Example
+      # Get specific integration from default duo Org
+      duoGetIntegrationn -integration_id DI527IFWUJA59LKS71Z0
+
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('iid','integrationid','integration_id','ikey')]
+            [String]$integration_key
+    )
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/integrations"
+
+    if ($integration_key)
+    {
+        $path += "/" + $integration_key
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
+function duoCreateIntegration()
+{
+    <#
+     .Synopsis
+      Used to Create or Update an Integration in a given Duo Org
+
+     .Description
+      Creates or Updates an integration in a Duo Org based on the provided inputs See: https://duo.com/docs/adminapi#create-integration
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Parameter type
+      The type of the integration to create. Refer to Retrieve Integrations for a list of valid values.
+
+     .Parameter enroll_policy
+      What to do after an unenrolled user passes primary authentication. Refer to Retrieve Integrations for a list of valid values.
+
+     .Parameter greeting
+      Voice greeting read before the authentication instructions to users who authenticate with a phone callback.
+
+     .Parameter groups_allowed
+      A comma-separated list of group IDs that are allowed to authenticate with the integration. If empty, all groups are allowed.
+
+     .Parameter notes
+      Description of the integration.
+
+     .Parameter adminapi_admins
+      Set to 1 to grant an Admin API integration permission for all Admins methods. Defaults to 0.
+
+     .Parameter adminapi_info
+      If creating an Admin API integration, set this to 1 to grant it permission for all Account Info methods. Defaults to 0.
+
+     .Parameter adminapi_integrations
+      Set to 1 to grant an Admin API integration permission for all Integrations methods. Defaults to 0.
+
+     .Parameter adminapi_read_log
+      Set to 1 to grant an Admin API integration permission for all Logs methods. Defaults to 0.
+
+     .Parameter adminapi_read_resource
+      Set to 1 to grant an Admin API integration permission to retrieve objects like users, phones, and hardware tokens. Defaults to 0.
+
+     .Parameter adminapi_settings
+      Set to 1 to grant an Admin API integration permission for all Settings methods. Defaults to 0.
+
+     .Parameter adminapi_write_resource
+      Set to 1 to grant an Admin API integration permission to create and modify objects like users, phones, and hardware tokens. Defaults to 0.
+
+     .Parameter trusted_device_days
+      Number of days to allow a user to trust the device they are logging in with. Refer to Retrieve Integrations for a list of supported integrations.
+
+     .Parameter ip_whitelist
+      CSV string of trusted IPs/Ranges. Refer to Retrieve Integrations for a list of supported integrations (eg. “192.0.2.8,198.51.100.0-198.51.100.20,203.0.113.0/24”)
+
+     .Parameter ip_whitelist_enroll_policy
+      What to do after a new user from a trusted IP completes primary authentication. Refer to Retrieve Integrations for a list of valid values.
+
+     .Parameter username_normalization_policy
+      string representing configured Duo Org
+
+     .Parameter self_service_allowed
+      string representing configured Duo Org
+
+     .Example
+      # Create radius integration on default duo Org with a type of radius
+      duoCreateIntegration -type "radius" -name "Radius for xyz"
+
+     .Example
+      # Update existing radius integration on default duo Org with a new Name
+      duoCreateIntegration -integration_id DI527IFWUJA59LKS71Z0 -name "Radius for abc"
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [string]$name,
+        [parameter(Mandatory=$false)]
+            [string]$type,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('enroll','allow','deny')]
+            [string]$enroll_policy,
+        [parameter(Mandatory=$false)]
+            [string]$greeting,
+        [parameter(Mandatory=$false)]
+            [string]$groups_allowed,
+        [parameter(Mandatory=$false)]
+            [string]$notes,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_admins,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_info,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_integrations,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_read_log,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_read_resource,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_settings,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$adminapi_write_resource,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(0,60)]
+            [int]$trusted_device_days,
+        [parameter(Mandatory=$false)]
+            [string]$ip_whitelist,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('enforce','allow')]
+            [string]$ip_whitelist_enroll_policy,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('None','Simple')]
+            [string]$username_normalization_policy,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$self_service_allowed,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('0','1')]
+            [string]$reset_secret_key,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('iid','integrationid','integration_id','ikey')]
+            [String]$integration_key
+    )
+
+    $param = New-Object System.Collections.ArrayList
+
+    [string[]]$parax =  ("name", "enroll_policy", "greeting", "groups_allowedv", "notes", "adminapi_admins",
+                         "adminapi_info", "adminapi_integrations", "adminapi_read_log", "adminapi_read_resource",
+                         "adminapi_settings", "adminapi_write_resource", "trusted_device_days", "ip_whitelist",
+                         "ip_whitelist_enroll_policy", "username_normalization_policy", "self_service_allowed" )
+
+    [string]$path = "/admin/v1/integrations"
+
+    #Update versus create logic
+    if ($integration_key)
+    {
+        if ($type)
+        {
+            Write-Warning("Ignoring type, updates to Type are not allowed")
+        }
+
+        $_c = $param.Add("reset_secret_key")
+        $path += "/" + $integration_key
+    } else {
+        if ((!$name) -or (!$type))
+        {
+            Write-Error("Both Name and Type are required during creation") -Category InvalidData -CategoryReason "missing data"
+        }
+        if ($reset_secret_key)
+        {
+            Write-Warning("Ignoring reset_secret_key, reset_secret_key is illogical during creation")
+        }
+        $_c = $param.Add("type")
+    }
+
+    foreach ($p in $parax)
+    {
+        $_c = $param.Add($p)
+    }
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    if ($integration_key)
+    {
+        if ($parameters.Count -lt 1)
+        {
+            Write-Error("update specified with no values to update") -Category InvalidData -CategoryReason "missing data"
+        }
+    }
+
+    [string]$method = "POST"
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeleteIntegration()
+{
+    param
+    (
+       [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('iid','integrationid','integration_id','ikey')]
+            [String]$integration_key
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/integrations/" + $token_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
 
 ###################Logs##################
 
