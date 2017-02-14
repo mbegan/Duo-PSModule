@@ -3,7 +3,6 @@
 
 This is a basic powershell wrapper intended to expose the capabilities of the Duo Admin API [Duo Admin API] (https://duo.com/support/documentation/adminapi#overview).
 
-##Please note: I no longer have a Duo org at my dispose to develop and test with.  I asked Duo for a testbed and they said no, it seems with all the money they are making these days they don't need community involvement...  If you'd like to see continued development and testing on this module let your respective Duo reps know. 
 --------
 
 ### Getting Started
