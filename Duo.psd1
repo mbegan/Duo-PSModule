@@ -56,7 +56,7 @@ ScriptsToProcess = @('Duo_org.ps1')
 #FormatsToProcess = @('')
 
 # Modules to import as nested modules of the module specified in ModuleToProcess
-NestedModules = @()
+NestedModules = @('Duo_org.ps1')
 
 # Functions to export from this module
 FunctionsToExport = 'Duo*'
