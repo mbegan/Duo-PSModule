@@ -1,6 +1,6 @@
 ﻿#using the httputility from system.web
 [System.Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null
-                  
+
 $ExecutionContext.SessionState.Module.OnRemove = {
     Remove-Module Duo_org
 }
@@ -25,7 +25,7 @@ function _duoThrowError()
     <# Highly subject to change... #>
     [string]$message = $duoSays.code.ToString() + " ; " + $duoSays.message
     $formatError = New-Object System.FormatException -ArgumentList $message,$Error[0]
-    #@@@ too bad this doesn't actually work    
+    #@@@ too bad this doesn't actually work
     $formatError.HelpLink = $text
     $formatError.Source = $Error[0].Exception
     throw $formatError
@@ -126,7 +126,7 @@ function _emailValidator()
     #real validation to happen at some point...
     $email = $email.ToLower().Trim()
     [regex]$isEmail = "\A[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z"
-    
+
     if ($email -match $isEmail)
     {
         return $true
@@ -177,7 +177,7 @@ function _duoTimeAsAByteArray()
         [parameter(Mandatory=$false)]
          [int]$timeWindow=30
     )
-    
+
     $epoch = Get-Date "1970-01-01T00:00:00"
     $now_utc = (Get-Date).ToUniversalTime()
     $span = New-TimeSpan -Start $epoch -End $now_utc
@@ -260,7 +260,7 @@ function _duoHmacSign()
 
     $hmacsha1 = New-Object System.Security.Cryptography.HMACSHA1
     $hmacsha1.Key = $key_bytes
-        
+
     $hash_bytes = $hmacsha1.ComputeHash($data_bytes)
     $hash_hex = [System.BitConverter]::ToString($hmacsha1.Hash)
 
@@ -295,7 +295,7 @@ function _duocanonicalizeParams()
     (
         [hashtable]$parameters
     )
-    
+
     if ($parameters.Count -ge 1)
     {
         $ret = New-Object System.Collections.ArrayList
@@ -393,7 +393,7 @@ function _duoMakeCall()
 {
     param
     (
-        
+
         [String]$method,
         [String]$resource,
         [hashtable]$AuthHeaders,
@@ -424,12 +424,12 @@ function _duoMakeCall()
     $request.UserAgent = "Duo-PSModule/0.1"
 
     $request.AutomaticDecompression = @([System.Net.DecompressionMethods]::Deflate, [System.Net.DecompressionMethods]::GZip)
-    
+
     foreach($key in $headers.keys)
     {
         $request.Headers.Add($key, $headers[$key])
     }
- 
+
     if ( ($method.ToUpper() -eq "POST") -or ($method.ToUpper() -eq "PUT") )
     {
         #make key value list, not json when done
@@ -437,7 +437,7 @@ function _duoMakeCall()
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($canon_params)
         $request.ContentType = 'application/x-www-form-urlencoded'
         $request.ContentLength = $bytes.Length
-                 
+
         [System.IO.Stream]$outputStream = [System.IO.Stream]$request.GetRequestStream()
         $outputStream.Write($bytes,0,$bytes.Length)
         $outputStream.Close()
@@ -450,11 +450,11 @@ function _duoMakeCall()
     try
     {
         [System.Net.HttpWebResponse]$response = $request.GetResponse()
-       
+
         $sr = New-Object System.IO.StreamReader($response.GetResponseStream())
         $txt = $sr.ReadToEnd()
         $sr.Close()
-        
+
         try
         {
             $psobj = ConvertFrom-Json -InputObject $txt
@@ -466,7 +466,7 @@ function _duoMakeCall()
         }
     }
     catch [Net.WebException]
-    { 
+    {
         [System.Net.HttpWebResponse]$response = $_.Exception.Response
         $sr = New-Object System.IO.StreamReader($response.GetResponseStream())
         $txt = $sr.ReadToEnd()
@@ -491,7 +491,7 @@ function _duoMakeCall()
 
 function duoGetUser()
 {
-    <# 
+    <#
      .Synopsis
       Used to get User(s) from a given Duo Org
 
@@ -507,22 +507,22 @@ function duoGetUser()
 
      .Parameter username
       string representing a duo user_id, if omitted all users are returned or users matching the user_id parameter
-      
+
      .Example
       duoGetUser -dOrg prod
-      
+
       Returns ALL users from the 'prod' duo org
-      
+
      .Example
       duoGetUser -user_id DUOxxxxxxxxxxxxxxxxx
 
       Returns a single user matching the user_id parameter passed
-      
+
      .Example
       duoGetUser -username user1
-      
+
       Returns a single user matching the username parameter passed
-           
+
      .LINK
       https://duo.com/support/documentation/adminapi#retrieve-users
     #>
@@ -551,7 +551,7 @@ function duoGetUser()
     } else {
         foreach ($p in $param)
         {
-            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
             {
                 if ((Get-Variable -Name $p -ValueOnly) -ne "")
                 {
@@ -596,7 +596,7 @@ function duoEnrollUser()
                     email       = $email
                     valid_secs  = $valid_secs
                    }
-    
+
     [string]$method = "POST"
     [string]$path = "/admin/v1/users/enroll"
 
@@ -671,7 +671,7 @@ function duoGetUserBypass()
                     valid_secs  = $valid_secs
                     reuse_count = $reuse_count
                    }
-    
+
     [string]$method = "POST"
     [string]$path = "/admin/v1/users/" + $user_id + "/bypass_codes"
 
@@ -703,7 +703,7 @@ function duoAssocUserToPhone()
             [alias('pid','phoneid')]
             [String]$phone_id
     )
-    
+
     $parameters = @{'phone_id'=$phone_id}
 
     [string]$method = "POST"
@@ -737,7 +737,7 @@ function duoAssocUserToToken()
             [alias('tid','tokenid')]
             [String]$token_id
     )
-    
+
     $parameters = @{'token_id'=$token_id}
 
     [string]$method = "POST"
@@ -771,7 +771,7 @@ function duoAssocUserToGroup()
             [alias('gid','groupid')]
             [String]$group_id
     )
-    
+
     $parameters = @{'group_id'=$group_id}
 
     [string]$method = "POST"
@@ -817,7 +817,7 @@ function duoCreateUser()
             [String]$notes
     )
 
-   
+
     [string]$method = "POST"
     [string]$path = "/admin/v1/users"
 
@@ -840,7 +840,7 @@ function duoCreateUser()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -865,7 +865,7 @@ function duoCreateUser()
 
 function duoGetAdmin()
 {
-    <# 
+    <#
      .Synopsis
       Used to get Admin(s) from a given Duo Org
 
@@ -971,7 +971,7 @@ function duoCreateAdmin()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -979,7 +979,7 @@ function duoCreateAdmin()
             }
         }
     }
-    
+
     [string]$method = "POST"
 
     try
@@ -1025,7 +1025,7 @@ function duoDeleteAdmin()
 ###################Phones##################
 function duoGetPhone()
 {
-    <# 
+    <#
      .Synopsis
       Used to get phone(s) from a given Duo Org
 
@@ -1063,7 +1063,7 @@ function duoGetPhone()
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/phones"
-    
+
     #If a phone_id was specified get that phone_id
     if ($phone_id)
     {
@@ -1072,7 +1072,7 @@ function duoGetPhone()
     #Check to see if additional search paramters were passed
         foreach ($p in $param)
         {
-            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
             {
                 if ((Get-Variable -Name $p -ValueOnly) -ne "")
                 {
@@ -1081,7 +1081,7 @@ function duoGetPhone()
             }
         }
     }
-    
+
     try
     {
         $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
@@ -1140,7 +1140,7 @@ function duoCreatePhone()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -1148,7 +1148,7 @@ function duoCreatePhone()
             }
         }
     }
-    
+
     [string]$method = "POST"
 
     [string]$path = "/admin/v1/phones"
@@ -1221,7 +1221,7 @@ function duoCreateActivationCode()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -1273,11 +1273,136 @@ function duoSendSMSCodes()
     return $request
 }
 
+function duoSendSMSInstallation()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,80)]
+            [ValidateScript({
+                if ($_ -cmatch "<insturl>"){
+                    $true
+                }
+                else {
+                    Throw "The installation_msg parameter must contain <insturl>.  This value is case sensitive and must be in lower case."
+                }
+            })]
+            [String]$installation_msg
+    )
+
+    [string[]]$param = "installation_msg"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/phones/" + $phone_id + "/send_sms_installation"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoSendSMSActivationCode()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('pid','phoneid')]
+            [String]$phone_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,604800)]
+            [int]$valid_secs=86400,
+        [parameter(Mandatory=$false)]
+            [switch]$install,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,80)]
+            [ValidateScript({
+                if ($_ -cmatch "<insturl>"){
+                    $true
+                }
+                else {
+                    Throw "The installation_msg parameter must contain <insturl>.  This value is case sensitive and must be in lower case."
+                }
+            })]
+            [String]$installation_msg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,80)]
+            [ValidateScript({
+                if ($_ -cmatch "<acturl>"){
+                    $true
+                }
+                else {
+                    Throw "The activation_msg parameter must contain <acturl>.  This value is case sensitive and must be in lower case."
+                }
+            })]
+            [String]$activation_msg
+
+    )
+
+    [string[]]$param = "valid_secs","install","installation_msg","activation_msg"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/phones/" + $phone_id + "/send_sms_activation"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 ###################Tokens##################
 
 function duoGetToken()
 {
-    <# 
+    <#
      .Synopsis
       Used to get all Tokens from a given Duo Org
 
@@ -1338,7 +1463,7 @@ function duoGetToken()
 
         foreach ($p in $param)
         {
-            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
             {
                 if ((Get-Variable -Name $p -ValueOnly) -ne "")
                 {
@@ -1402,7 +1527,7 @@ function duoCreateToken()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -1410,7 +1535,7 @@ function duoCreateToken()
             }
         }
     }
-    
+
     [string]$method = "POST"
 
     [string]$path = "/admin/v1/tokens"
@@ -1466,7 +1591,7 @@ function duoDeleteToken()
 
 function duoGetGroup()
 {
-    <# 
+    <#
      .Synopsis
       Used to get all Groups from a given Duo Org
 
@@ -1836,7 +1961,7 @@ function duoDeleteIntegration()
 
 function duoGetLog()
 {
-    <# 
+    <#
      .Synopsis
       Used to get logs of a given type
 
@@ -1877,7 +2002,7 @@ function duoGetLog()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -1902,7 +2027,7 @@ function duoGetLog()
 
 function duoGetInfo()
 {
-    <# 
+    <#
      .Synopsis
       Used to get info of a given type
 
@@ -1945,7 +2070,7 @@ function duoGetInfo()
 
     foreach ($p in $param)
     {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue)
         {
             if ((Get-Variable -Name $p -ValueOnly) -ne "")
             {
@@ -1970,7 +2095,7 @@ function duoGetInfo()
 
 function duoSoftTotpClient()
 {
-<# 
+<#
     .Synopsis
      Used to generate timebased HOTP's according to RFC4226 guidelines
 
@@ -2008,7 +2133,7 @@ function duoSoftTotpClient()
 
     $timeBytes = _duoTimeAsAByteArray -timeWindow $timeWindow
     $resultingHash = $hmac.ComputeHash($timeBytes)
-    
+
     #offset is the lower 4 bits of the last byte
     $offset = $resultingHash[($randHash.Length-1)] -band 0xf
 
