@@ -4,9 +4,31 @@
 This is a basic powershell wrapper intended to expose the capabilities of the Duo Admin API [Duo Admin API](https://duo.com/support/documentation/adminapi#overview).
 
 --------
+## A note about TSL 1.2
+
+Momentum is shifting to clients and servers supporting TLS 1.2.  This plugin is capable of connecting to Duo with TLS 1.2 but doesn't do anything to direct the protocol used rather it relies on the SystemDefault configured for [schannel on the host](https://msdn.microsoft.com/en-us/library/system.net.securityprotocoltype(v=vs.110).aspx)
+
+If you want to force TLS 1.2 make sure your system can actually [support it](https://blogs.perficient.com/microsoft/2016/04/tsl-1-2-and-net-support/).
+
+### force TLS 1.2
+
+If you decide you want to force this module to use TLS1.2 add this code block to your Duo_org.ps1 or your $PROFILE script.
+
+```powershell
+try
+{
+   [Net.ServicePointManager]::SecurityProtocol  = [Net.SecurityProtocolType]::Tls12
+}
+catch
+{
+   Write-Warning $_.Exception.Message
+}
+```
 
 ## Getting Started
+
 ### Installation:
+
 1. Download the module (git clone or download the zip)
 1. Place the module in your PSModulePath hint [Read more about PSModulePath Here](https://msdn.microsoft.com/en-us/library/dd878324%28v=vs.85%29.aspx)
 
@@ -38,6 +60,7 @@ Write-Host $env:PSModulePath
 #### if you'd like and added layer of protection to this key sitting in your file you can encrypt the string! After you've loaded the duo module you can use helper function **_duoEncskey_**. Paste your plaintext key into the dialog and paste the resulting output into the value for sKeyEnc in the configuration block (see etst above)
 
 ### Example Installation:
+
 1. Open a command prompt
 
 ```
@@ -53,6 +76,7 @@ notepad Duo_org.ps1
 1. Save the file
   
 ### Basic Usage:
+
 1. Launch powershell \(or even better, the powershell ise\)
 1. Import the Duo Module
 1. Use
@@ -108,6 +132,7 @@ The commands implimented are listed below, if you have a specific use case ask a
 #### NOTE in most cases the Create* functions also serve to Modify if the object identifier of an existing object is provided
 
 #### Current Commands
+
 - duoAssocUserToGroup
 - duoAssocUserToPhone
 - duoAssocUserToToken
