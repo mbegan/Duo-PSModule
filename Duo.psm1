@@ -755,6 +755,40 @@ function duoAssocUserToToken()
     return $request
 }
 
+function duoDisAssocUserToToken()
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('uid','userid')]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('tid','tokenid')]
+            [String]$token_id
+    )
+    
+    $parameters = @{}
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/users/" + $user_id + "/tokens/" + $token_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 function duoAssocUserToGroup()
 {
     param
