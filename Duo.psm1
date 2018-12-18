@@ -895,6 +895,33 @@ function duoCreateUser()
     return $request
 }
 
+function duoSyncUser {
+	param
+	(
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(1, 100)]
+		[String]$dOrg = $DuoDefaultOrg,
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(1, 100)]
+		[String]$username,
+		[string]$directorykey
+	)
+	
+	$parameters = @{
+		username   = $username
+	}
+	[string]$method = "POST"
+	[string]$path = "/admin/v1/users/directorysync/" + $directorykey + "/syncuser"
+	
+	try {
+		$request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+	}
+	catch {
+		throw $_
+	}
+	return $request
+}
+
 ###################Admins##################
 
 function duoGetAdmin()
