@@ -848,14 +848,26 @@ function duoCreateUser()
             [String]$status,
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
-            [String]$notes
-    )
+            [String]$note,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(0,100)]
+            [String]$alias1,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(0,100)]
+            [String]$alias2,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(0,100)]
+            [String]$alias3,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(0,100)]
+            [String]$alias4
+       )
 
    
     [string]$method = "POST"
     [string]$path = "/admin/v1/users"
 
-    [string[]]$param = "email","username","realname","status","notes"
+    [string[]]$param = "email","username","realname","status","notes","addalias","alias1","alias2","alias3","alias4"
 
     $parameters = New-Object System.Collections.Hashtable
 
@@ -894,6 +906,69 @@ function duoCreateUser()
 
     return $request
 }
+
+function duoAddAlias()
+{
+<# 
+     .Synopsis
+      Used to and an alias to a User from a given Duo Org
+
+     .Description
+      Adds an alias to the first avaliable alias filed for a duo user
+      The user_id parameter will take precedence over username if both are provided.
+
+     .Parameter dOrg
+      Optional string representing configured Duo Org, if omitted default org used
+
+     .Parameter user_id
+      string representing a duo user_id, user_id or username is required
+
+     .Parameter username
+      string representing a duo user_id, user_id or username is required
+
+      .Parameter alias
+      string representing an alias to add to the duo user specified by user_id or username. This parameter is required.
+      
+     .Example
+      duoGetUser -dOrg prod
+      
+      Returns ALL users from the 'prod' duo org
+      
+     .Example
+      duoAddAlias -user_id DUOxxxxxxxxxxxxxxxxx -alias "useralias"
+
+      adds the alias: "useralias" to the first avaliable alias label on the duo user DUOxxxxxxxxxxxxxxxxx
+#>
+ param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [alias('uid','userid')]
+            [ValidateLength(20,20)]
+            [String]$user_id,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$username,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$alias
+    )
+
+   if($user_id){$user = duogetuser -user_id $user_id}
+    elseif($username){$user = duogetuser -username $username}
+     else {Write-host "you must supply a user_id or username parameter"} 
+
+   if($user.alias1 -eq $null) {duocreateuser -user_id $user.user_id -alias1 $alias}
+    elseif($user.alias2 -eq $null) {duocreateuser -user_id $user.user_id -alias2 $alias}
+     elseif($user.alias3 -eq $null) {duocreateuser -user_id $user.user_id -alias3 $alias}
+      elseif($user.alias4 -eq $null) {duocreateuser -user_id $user.user_id -alias4 $alias}
+       else { 
+              $info = $user | select-object -Property username, alias1, alias2, alias3, alias4
+              Write-host "user already has four aliases $info" }
+}
+
 
 ###################Admins##################
 
