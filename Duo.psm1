@@ -934,7 +934,7 @@ function duoSyncUser()
                    }
     
     [string]$method = "POST"
-    [string]$path = "/admin/v1/users/directorysync/"+$DuoOrgs.$dOrg.directory_key+"/syncuser"
+    [string]$path = "/admin/v1/users/directorysync/" + $DuoOrgs.$dOrg.directory_key + "/syncuser"
     
     try
     {
