@@ -912,7 +912,7 @@ function duoSyncUser()
       string representing a duo user_id, if omitted all users are returned or users matching the user_id parameter
       
      .Example
-      duoGetUser -username user1
+      duoSyncUser -username user1
       
       Updates the properties of 'user1' from specified directory
            
