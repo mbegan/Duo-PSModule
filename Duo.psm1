@@ -895,6 +895,59 @@ function duoCreateUser()
     return $request
 }
 
+function duoSyncUser()
+{
+    <# 
+     .Synopsis
+      Used to sync a User from a specified directory
+
+     .Description
+      Forces a manual update of user properties from associated user directory (directory_key in Duo_org.ps1) for a specified user.
+      Handy for unlocking accounts.
+
+     .Parameter dOrg
+      Optional string representing configured Duo Org, if omitted default org used
+
+     .Parameter username
+      Required string representing a duo user_id
+      
+     .Example
+      duoSyncUser -username user1
+      
+      Updates the properties of 'user1' from specified directory
+           
+     .LINK
+      https://duo.com/docs/adminapi#synchronize-user-from-directory
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [String]$username
+    )
+
+    $parameters = @{
+                    username    = $userName
+                   }
+    
+    [string]$method = "POST"
+    [string]$path = "/admin/v1/users/directorysync/" + $DuoOrgs.$dOrg.directory_key + "/syncuser"
+    
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 ###################Admins##################
 
 function duoGetAdmin()

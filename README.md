@@ -37,6 +37,7 @@ Write-Host $env:PSModulePath
 ```
 
 1. Get the Integration Key, Secret Key and API Hostname for your Admin API Integration [First Steps](https://duo.com/support/documentation/adminapi#first-steps)
+*optional* The directory_key for a directory can be found by navigating to Users → Directory Sync in the [Duo Admin Panel](https://admin.duosecurity.com/), and then clicking on the configured directory. This is required for manually syncing users.
 1. Create a file called Duo_org.ps1 (example content below) and save it in the directory with the Duo.psd1 and Duo.psm1 files.
 
 ``` powershell
@@ -49,11 +50,13 @@ Write-Host $env:PSModulePath
                                 iKey  = [string]"DIxxxxxxxxxxxxxxxxxx"
                                 sKey = [string]"YourSecretsHere"
                                 apiHost = [string]"api-nnnnnxnx.duosecurity.com"
+                                directory_key = [string]"XXXXXXXXXXXXXXXXXXXX"
                                }
                         etst = [Hashtable]@{
                                 iKey  = [string]"DIxxxxxxxxxxxxxxxxxx"
                                 sKeyEnc = [string]"Big Long protected string on 1 line here"
                                 apiHost = [string]"api-nnnnnxnx.duosecurity.com"
+                                directory_key = [string]"XXXXXXXXXXXXXXXXXXXX"
 							   }
                        }
 ```
@@ -160,3 +163,4 @@ The commands implimented are listed below, if you have a specific use case ask a
 - duoGetUserBypass
 - duoSendSMSCodes
 - duoSoftTotpClient
+- duoSyncUser
