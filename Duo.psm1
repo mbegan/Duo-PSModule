@@ -909,7 +909,7 @@ function duoSyncUser()
       Optional string representing configured Duo Org, if omitted default org used
 
      .Parameter username
-      string representing a duo user_id, if omitted all users are returned or users matching the user_id parameter
+      Required string representing a duo user_id
       
      .Example
       duoSyncUser -username user1
