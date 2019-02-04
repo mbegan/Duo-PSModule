@@ -351,41 +351,59 @@ function _duoBuildCall()
         [hashtable]$parameters
     )
 
-    [string]$canon_params = _duocanonicalizeParams -parameters $parameters
-    [string]$query = ""
+    $results = New-Object System.Collections.ArrayList
+    do {
+        [string]$canon_params = _duocanonicalizeParams -parameters $parameters
+        [string]$query = ""
 
-    if (($method.ToUpper() -eq 'GET') -or ($method.ToUpper() -eq 'DELETE'))
-    {
-        if ($parameters.Count -gt 0)
+        if (($method.ToUpper() -eq 'GET') -or ($method.ToUpper() -eq 'DELETE'))
         {
-            $query = "?" + $canon_params
+            if ($parameters.Count -gt 0)
+            {
+                $query = "?" + $canon_params
+            }
         }
-    }
 
-    $url = "https://" + $DuoOrgs[$dOrg].apiHost + $path + $query
-    [string]$date_string = _duoRFC2822Date
-    [string]$authN = _duoSign -method $method -path $path -canon_params $canon_params -date $date_string -dOrg $dOrg
-    $AuthHeaders =
-        @{
-        "X-Duo-Date" = $date_string
-        "Authorization" = $authN
-         }
+        $url = "https://" + $DuoOrgs[$dOrg].apiHost + $path + $query
+        [string]$date_string = _duoRFC2822Date
+        [string]$authN = _duoSign -method $method -path $path -canon_params $canon_params -date $date_string -dOrg $dOrg
+        $AuthHeaders =
+            @{
+            "X-Duo-Date" = $date_string
+            "Authorization" = $authN
+            }
 
-    $result = _duoMakeCall -method $method -resource $url -AuthHeaders $AuthHeaders -canon_params $canon_params
-    if ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
-    {
-        foreach ($key in $parameters.Keys)
+        $result = _duoMakeCall -method $method -resource $url -AuthHeaders $AuthHeaders -canon_params $canon_params
+        if ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
         {
-            Write-Host("`t") -NoNewline
-            Write-Host($key + "`t=>`t" + $parameters[$key]) -ForegroundColor Cyan
+            foreach ($key in $parameters.Keys)
+            {
+                Write-Host("`t") -NoNewline
+                Write-Host($key + "`t=>`t" + $parameters[$key]) -ForegroundColor Cyan
+            }
         }
-    }
-    if ($result.stat -eq 'OK')
-    {
-        return $result.response
-    } else {
-        throw $result.response
-    }
+        if ($result.stat -eq 'OK' -and $result.metadata -eq $null)
+        {
+            return $result.response
+        } 
+        elseif ($result.metadata -ne $null -and $result.metadata.next_offset -ne $null) 
+        {
+            $results.AddRange($result.response)
+            $parameters["offset"] = $result.metadata.next_offset
+            $done = $false
+        }
+        elseif ($result.metadata -ne $null -and $result.metadata.next_offset -eq $null)
+        {
+            $results.AddRange($result.response)
+            $done = $true
+            return $results
+        }
+        else
+        {
+            throw $result.response
+        }
+    } while ( $done -ne $true )
+    return $results
 }
 
 #Make the Call URL, return the results
@@ -507,6 +525,9 @@ function duoGetUser()
 
      .Parameter username
       string representing a duo user_id, if omitted all users are returned or users matching the user_id parameter
+
+     .Parameter limit
+      optional integer representing a page size for results
       
      .Example
       duoGetUser -dOrg prod
@@ -537,10 +558,14 @@ function duoGetUser()
             [String]$user_id,
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
-            [String]$username
+            [String]$username,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,300)]
+            [alias('pagesize')]
+            [int]$limit=100
     )
 
-    [string[]]$param = "username"
+    [string[]]$param = "username","limit"
     $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
@@ -644,6 +669,31 @@ function duoDeleteUser()
 }
 
 function duoGetUserBypass()
+    <# 
+     .Synopsis
+      Used to get User(s) from a given Duo Org
+
+     .Description
+      Returns a list of bypass code metadata associated with the user
+
+     .Parameter dOrg
+      Optional string representing configured Duo Org, if omitted default org used
+
+     .Parameter user_id
+      string representing a duo user_id, if omitted all users are returned or users matching the username parameter
+
+     .Parameter limit
+      optional integer representing a page size for results
+      
+     .Example
+      duoGetUserBypass -user_id DUOxxxxxxxxxxxxxxxxx
+      
+      Returns bypass code data for the user matching the user_id parameter passed
+           
+     .LINK
+      https://duo.com/docs/adminapi#retrieve-bypass-codes-by-user-id
+    #>
+
 {
     param
     (
@@ -662,7 +712,11 @@ function duoGetUserBypass()
             [int]$reuse_count=5,
         [parameter(Mandatory=$false)]
             [ValidateRange(0,86400)]
-            [int]$valid_secs=3600
+            [int]$valid_secs=3600,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
     )
 
     $parameters = @{
@@ -670,6 +724,7 @@ function duoGetUserBypass()
                     count       = $count
                     valid_secs  = $valid_secs
                     reuse_count = $reuse_count
+                    limit       = $limit
                    }
     
     [string]$method = "POST"
@@ -962,6 +1017,9 @@ function duoGetAdmin()
      .Parameter dOrg
       string representing configured Duo Org
 
+     .Parameter limit
+      optional integer representing a page size for results
+      
      .Example
       duoGetAllUsers -dOrg prod
 
@@ -980,20 +1038,27 @@ function duoGetAdmin()
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('aid','adminid')]
-            [String]$admin_id
+            [String]$admin_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
     )
 
+    $parameters = New-Object System.Collections.Hashtable
     [string]$method = "GET"
     [string]$path = "/admin/v1/admins"
 
     if ($admin_id)
     {
         $path += "/" + $admin_id
+    } else {
+        $parameters = @{'limit'=$limit}
     }
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
     }
     catch
     {
@@ -1122,6 +1187,9 @@ function duoGetPhone()
      .Parameter dOrg
       string representing configured Duo Org
 
+     .Parameter limit
+      optional integer representing a page size for results
+      
      .Example
       # Get all phones from "prod" duo Org
       duoGetAllUsers -dOrg prod
@@ -1143,9 +1211,13 @@ function duoGetPhone()
             [Validatescript({_numberValidator -number $_})]
             [string]$number,
         [parameter(Mandatory=$false)]
-            [string]$extension
+            [string]$extension,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
     )
-    [string[]]$param = "number","extension"
+    [string[]]$param = "number","extension","limit"
     $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
@@ -1374,6 +1446,9 @@ function duoGetToken()
      .Parameter dOrg
       string representing configured Duo Org
 
+     .Parameter limit
+      optional integer representing a page size for results
+      
      .Example
       # Get all users from "prod" duo Org
       duoGetToken -dOrg prod
@@ -1397,10 +1472,15 @@ function duoGetToken()
             [string]$type,
         [parameter(Mandatory=$false)]
             [ValidateLength(6,32)]
-            [string]$serial
+            [string]$serial,
+        [parameter(Mandatory=$false)]
+            [alias('pagesize')]
+            [ValidateRange(1,500)]
+            [int]$limit=100
+
     )
 
-    [string[]]$param = "type","serial"
+    [string[]]$param = "type","serial","limit"
     $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
@@ -1560,6 +1640,9 @@ function duoGetGroup()
      .Description
       Returns a collection of user Objects See: https://duo.com/docs/adminapi#retrieve-groups
 
+     .Parameter limit
+      optional integer representing a page size for results
+      
      .Parameter dOrg
       string representing configured Duo Org
 
@@ -1580,22 +1663,38 @@ function duoGetGroup()
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('gid','groupid')]
-            [String]$group_id
+            [String]$group_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,100)]
+            [alias('pagesize')]
+            [int]$limit
     )
+
+
+    [string[]]$param = "group_id","limit"
+    $parameters = New-Object System.Collections.Hashtable
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/groups"
-
-
-
     if ($group_id)
     {
         $path += "/" + $group_id
+    } else {
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
+        }
     }
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
     }
     catch
     {
@@ -1647,6 +1746,9 @@ function duoGetIntegration()
      .Parameter dOrg
       string representing configured Duo Org
 
+     .Parameter limit
+      optional integer representing a page size for results
+      
      .Example
       # Get all integrations from "prod" duo Org
       duoGetIntegration -dOrg prod
@@ -1664,7 +1766,12 @@ function duoGetIntegration()
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('iid','integrationid','integration_id','ikey')]
-            [String]$integration_key
+            [String]$integration_key,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
+
     )
 
     [string]$method = "GET"
@@ -2112,6 +2219,5 @@ function duoSoftTotpClient()
     $otp = $otp.ToString().PadLeft($length,'0')
     return $otp
 }
-
 
 Export-ModuleMember -Function duo* -Alias duo*
