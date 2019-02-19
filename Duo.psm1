@@ -1068,82 +1068,144 @@ function duoGetAdmin()
     return $request
 }
 
-function duoCreateAdmin()
+function duoGetAdmin()
 {
+    <# 
+     .Synopsis
+      Used to get Admin(s) from a given Duo Org
+
+     .Description
+      Returns a collection of user Objects See: https://duo.com/support/documentation/adminapi#retrieve-administrators
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Parameter limit
+      optional integer representing a page size for results
+      
+     .Example
+      duoGetAllUsers -dOrg prod
+
+      returns a collection of all admins defined in the 'prod' org
+
+     .Example
+      duoGetAllUsers -admin_id DEMxxxxxxxxxxxxxxxxx
+
+      returns an admin with the admin_id parameter provided
+    #>
     param
     (
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
             [String]$dOrg=$DuoDefaultOrg,
         [parameter(Mandatory=$false)]
-            [Validatescript({_emailValidator -email $_})]
-            [string]$email,
-        [parameter(Mandatory=$false)]
-            [ValidateLength(8,254)]
-            [string]$password,
-        [parameter(Mandatory=$false)]
-            [ValidateLength(1,100)]
-            [string]$name,
-        [parameter(Mandatory=$false)]
-            [Validatescript({_numberValidator -number $_})]
-            [string]$phone,
-        [parameter(Mandatory=$false)]
-            [ValidateSet('Owner','Administrator','Application Manager',`
-                         'User Manager','Help Desk','Billing','Read-only' )]
-            [string]$role,
-        [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('aid','adminid')]
-            [String]$admin_id
+            [String]$admin_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
     )
 
-    if ($phone)
-    {
-        $phone = duonumberNormalize -number $phone
-    }
-
+    $parameters = New-Object System.Collections.Hashtable
+    [string]$method = "GET"
     [string]$path = "/admin/v1/admins"
 
     if ($admin_id)
     {
-        Write-Verbose ("Updating: " + $admin_id)
         $path += "/" + $admin_id
     } else {
-        if ( ($email) -and ($password) -and ($name) -and ($phone) )
-        {
-            Write-Verbose ("Creating: " + $name)
-        } else {
-            throw ("During Creation email, password, name and phone are required")
-        }
+        $parameters = @{'limit'=$limit}
     }
-
-    [string[]]$param = "email","password","name","phone","role"
-
-    $parameters = New-Object System.Collections.Hashtable
-
-    foreach ($p in $param)
-    {
-        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
-        {
-            if ((Get-Variable -Name $p -ValueOnly) -ne "")
-            {
-                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
-            }
-        }
-    }
-    
-    [string]$method = "POST"
 
     try
     {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
     }
     catch
     {
+        #Write-Warning $_.TargetObject
         throw $_
     }
-
     return $request
+}
+
+function duoCreateAdmin {
+	param
+	(
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(1, 100)]
+		[String]$dOrg = $DuoDefaultOrg,
+		[Parameter(Mandatory = $false)]
+		[ValidateScript({
+				_emailValidator -email $_
+			})]
+		[string]$email,
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(8, 254)]
+		[string]$password,
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(1, 100)]
+		[string]$name,
+		[Parameter(Mandatory = $false)]
+		[ValidateScript({
+				_numberValidator -number $_
+			})]
+		[string]$phone,
+		[Parameter(Mandatory = $false)]
+		[string]$password_change_required,
+		[Parameter(Mandatory = $false)]
+		[ValidateSet('Owner', 'Administrator', 'Application Manager', 'User Manager', 'Help Desk', 'Billing', 'Read-only')]
+		[string]$role,
+		[string]$restricted_by_admin_units,
+		[string]$status,
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(20, 20)]
+		[Alias('aid', 'adminid')]
+		[string]$admin_id
+	)
+	
+	if ($phone) {
+		$phone = duonumberNormalize -number $phone
+	}
+	
+	[string]$path = "/admin/v1/admins"
+	
+	if ($admin_id) {
+		Write-Verbose ("Updating: " + $admin_id)
+		$path += "/" + $admin_id
+	}
+	else {
+		if (($email) -and ($password) -and ($name) -and ($phone)) {
+			Write-Verbose ("Creating: " + $name)
+		}
+		else {
+			throw ("During Creation email, password, name and phone are required")
+		}
+	}
+	
+	[string[]]$param = "email", "password", "name", "phone", "password_change_required", "role", "restricted_by_admin_units", "status"
+	
+	$parameters = New-Object System.Collections.Hashtable
+	
+	foreach ($p in $param) {
+		if (Get-Variable -Name $p -ErrorAction SilentlyContinue) {
+			if ((Get-Variable -Name $p -ValueOnly) -ne "") {
+				$parameters.Add($p, (Get-Variable -Name $p -ValueOnly))
+			}
+		}
+	}
+	
+	[string]$method = "POST"
+	try {
+		$request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+	}
+	catch {
+		throw $_
+	}
+	
+	return $request
 }
 
 function duoDeleteAdmin()
