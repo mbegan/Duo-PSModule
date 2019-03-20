@@ -475,7 +475,7 @@ function _duoMakeCall()
         
         try
         {
-            $psobj = ConvertFrom-Json -InputObject $txt
+            $psobj = ConvertFrom-Json -InputObject $txt -ErrorAction SilentlyContinue
         }
         catch
         {
@@ -1781,7 +1781,7 @@ function duoGetIntegration()
             [ValidateRange(1,500)]
             [alias('pagesize')]
             [int]$limit=100
-    )
+    ) 
 
     [string]$method = "GET"
     [string]$path = "/admin/v1/integrations"
@@ -1793,6 +1793,21 @@ function duoGetIntegration()
         # if both integration_key and name parameters are passed, prioritize the integration_key and ignore name
         if ($name) {
             remove-variable -name name
+        }
+    }
+    else
+    {
+        [string[]]$param = "limit"
+        $parameters = New-Object System.Collections.Hashtable
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
         }
     }
     try
