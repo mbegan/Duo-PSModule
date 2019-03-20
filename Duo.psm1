@@ -475,7 +475,7 @@ function _duoMakeCall()
         
         try
         {
-            $psobj = ConvertFrom-Json -InputObject $txt -ErrorAction SilentlyContinue
+            $psobj = ConvertFrom-Json -InputObject $txt
         }
         catch
         {
