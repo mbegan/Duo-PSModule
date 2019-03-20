@@ -1744,7 +1744,10 @@ function duoGetIntegration()
       Returns a collection of integrations Objects See: https://duo.com/docs/adminapi#integrations
 
      .Parameter dOrg
-      string representing configured Duo Org
+      String representing configured Duo Org
+
+     .Parameter name
+      Case insensitive string of an exact integration name to search for
 
      .Parameter limit
       optional integer representing a page size for results
@@ -1757,7 +1760,11 @@ function duoGetIntegration()
       # Get specific integration from default duo Org
       duoGetIntegrationn -integration_id DI527IFWUJA59LKS71Z0
 
+     .Example
+      # Get integration name "ORG RDP Samplehost" from "prod" duo Org; if an integration_id is also supplied this parameter will be ignored.
+      duoGetIntegration -dOrg prod -name "ORG RDP Test"
     #>
+
     param
     (
         [parameter(Mandatory=$false)]
@@ -1768,10 +1775,12 @@ function duoGetIntegration()
             [alias('iid','integrationid','integration_id','ikey')]
             [String]$integration_key,
         [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [String]$name,
+        [parameter(Mandatory=$false)]
             [ValidateRange(1,500)]
             [alias('pagesize')]
             [int]$limit=100
-
     )
 
     [string]$method = "GET"
@@ -1780,8 +1789,12 @@ function duoGetIntegration()
     if ($integration_key)
     {
         $path += "/" + $integration_key
+        
+        # if both integration_key and name parameters are passed, prioritize the integration_key and ignore name
+        if ($name) {
+            remove-variable -name name
+        }
     }
-
     try
     {
         $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
@@ -1791,6 +1804,18 @@ function duoGetIntegration()
         #Write-Warning $_.TargetObject
         throw $_
     }
+    try
+    {  
+        if ($name)
+        {
+            $request = $request | Where-Object { $_.name -eq $name }
+        }
+    }
+    catch
+    {
+        throw $_
+    }
+
     return $request
 }
 
@@ -2000,29 +2025,83 @@ function duoCreateIntegration()
 
 function duoDeleteIntegration()
 {
+    <# 
+     .Synopsis
+      Used to delete an integration from a a given Duo Org
+
+     .Description
+      Removes an integration from Duo
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Parameter integration_key
+      Optional string representing the integration_key to delete - either this value or instance name is required
+
+      .Parameter name
+      Optional string representing the integration_key to delete - either this value or integration key is required
+
+     .Example
+      # Delete an integration in the "prod" duo Org by integration key
+      duoDeleteIntegration -dOrg prod -integration_key DI527IFWUJA59LKS71Z0
+
+     .Example
+      # Delete an integration in the "prod" duo Org by name.  If an integration_id is also supplied this parameter will be ignored.
+      duoDeleteIntegration -dOrg prod -name "ORG RDP Test"
+    #>
+
     param
     (
-       [parameter(Mandatory=$false)]
+        [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
             [String]$dOrg=$DuoDefaultOrg,
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('iid','integrationid','integration_id','ikey')]
-            [String]$integration_key
+            [String]$integration_key,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,255)]
+            [String]$name
     )
+    $null
+    if ($integration_key)
+    {       
+        # if both integration_key and name parameters are passed, prioritize the integration_key and ignore name
+        if ($name) {
+            remove-variable -name name
+        }
+    }
 
+    if ($name)
+    {
+        #search for the ikey..
+        $search = duoGetIntegration -dOrg $dOrg -name $name
+        
+        if ($search.integration_key)
+        {
+            $integration_key = $search.integration_key
+        }
+        else
+        {
+            throw "Unable to obtain integration key for instance $($name)."
+        }
+    }
+    
     [string]$method = "DELETE"
-    [string]$path = "/admin/v1/integrations/" + $token_id
-
+    [string]$path = "/admin/v1/integrations/$($integration_key)"
+    
     try
     {
-        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+        write-host "Integration key $($integration_key) removed or already absent."
+		$request = $true
     }
     catch
     {
+        $request = $false
+		#Write-Warning $_.TargetObject
         throw $_
     }
-
     return $request
 }
 
