@@ -1252,7 +1252,7 @@ function duoCreateAdminActivationLink()
         [parameter(Mandatory=$false)]
             [ValidateSet('Owner','Administrator','Application Manager',`
                          'User Manager','Help Desk','Billing','Read-only' )]
-            [string]$role = "Read-only"
+            [string]$admin_role = "Read-only"
     )
 
     [string]$path = "/admin/v1/admins/activations"
@@ -1266,7 +1266,7 @@ function duoCreateAdminActivationLink()
         }
 
 
-    [string[]]$param = "email","send_email","valid_days","role"
+    [string[]]$param = "email","send_email","valid_days","admin_role"
 
     $parameters = New-Object System.Collections.Hashtable
 
@@ -1286,6 +1286,46 @@ function duoCreateAdminActivationLink()
     try
     {
         $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeletePendingAdminActivation()
+{
+    <# 
+     .Synopsis
+      Used to delete the pending admin activation with ID admin_activation_id from the system.
+
+     .Description
+      Delete the pending admin activation with ID admin_activation_id from the system. admin_activation_id could be retrieved via duoGetPendingAdminActivations()
+
+     .Parameter dOrg
+      string representing configured Duo Org
+     
+      https://duo.com/docs/adminapi#delete-pending-administrator-activation
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [string]$admin_activation_id        
+    )
+
+    [string]$path = "/admin/v1/admins/activations/$admin_activation_id"
+    
+    [string]$method = "DELETE"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
     }
     catch
     {
