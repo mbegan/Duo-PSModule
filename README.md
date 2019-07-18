@@ -141,6 +141,7 @@ The commands implimented are listed below, if you have a specific use case ask a
 - duoAssocUserToToken
 - duoCreateActivationCode
 - duoCreateAdmin
+- duoCreateAdminActivationLink
 - duoCreateIntegration
 - duoCreatePhone
 - duoCreateToken
@@ -149,6 +150,7 @@ The commands implimented are listed below, if you have a specific use case ask a
 - duoDeleteGroup
 - duoDeleteIntegration
 - duoDeletePhone
+- duoDeletePendingAdminActivation
 - duoDeleteToken
 - duoDeleteUser
 - duoEnrollUser
