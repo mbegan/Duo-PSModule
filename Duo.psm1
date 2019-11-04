@@ -883,7 +883,7 @@ function duoRemoveUserFromGroup {
     (
         [parameter(Mandatory=$false)]
             [ValidateLength(1,100)]
-            [String]$dOrg="prod",
+            [String]$dOrg=$DuoDefaultOrg,
         [parameter(Mandatory=$true)]
             [alias('uid','userid')]
             [ValidateLength(20,20)]
@@ -899,7 +899,7 @@ function duoRemoveUserFromGroup {
 
     try
     {
-        $request = _duoBuildCall -method $method -path $path -dOrg "prod"
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
     }
     catch
     {
