@@ -4,7 +4,7 @@
 This is a basic powershell wrapper intended to expose the capabilities of the Duo Admin API [Duo Admin API](https://duo.com/support/documentation/adminapi#overview).
 
 --------
-## A note about TSL 1.2
+## A note about TLS 1.2
 
 Momentum is shifting to clients and servers supporting TLS 1.2.  This plugin is capable of connecting to Duo with TLS 1.2 but doesn't do anything to direct the protocol used rather it relies on the SystemDefault configured for [schannel on the host](https://msdn.microsoft.com/en-us/library/system.net.securityprotocoltype(v=vs.110).aspx)
 
