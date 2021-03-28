@@ -1068,6 +1068,59 @@ function duoGetAdmin()
     return $request
 }
 
+function duoGetPendingAdminActivations()
+{
+    <# 
+     .Synopsis
+      Used to Retrieve Pending Administrator Activations from a given Duo Org
+
+     .Description
+      Returns a paged list of pending administrator activations. To fetch all results, call repeatedly with the offset parameter as long as the result metadata has a next_offset value.
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Parameter limit
+      optional integer representing a page size for results
+      
+     .Parameter offset
+      optional integer. When used with "limit", the handler will return "limit" records starting at the n-th record, where n is the offset.
+
+      https://duo.com/docs/adminapi#retrieve-pending-administrator-activations
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [int]$offset=0
+    )
+
+    $parameters = New-Object System.Collections.Hashtable
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/admins/activations"
+
+    $parameters = @{'limit'=$limit; 'offset'=$offset}    
+    
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
 function duoCreateAdmin()
 {
     param
@@ -1088,9 +1141,18 @@ function duoCreateAdmin()
             [Validatescript({_numberValidator -number $_})]
             [string]$phone,
         [parameter(Mandatory=$false)]
+            [ValidateSet("true","false")]
+            [string]$password_change_required="true",            
+        [parameter(Mandatory=$false)]
             [ValidateSet('Owner','Administrator','Application Manager',`
                          'User Manager','Help Desk','Billing','Read-only' )]
             [string]$role,
+        [parameter(Mandatory=$false)]
+            [ValidateSet("true","false")]
+            [string]$restricted_by_admin_units="false",
+        [parameter(Mandatory=$false)]
+            [ValidateSet("Active","Disabled")]
+            [string]$status="Disabled",
         [parameter(Mandatory=$false)]
             [ValidateLength(20,20)]
             [alias('aid','adminid')]
@@ -1117,7 +1179,7 @@ function duoCreateAdmin()
         }
     }
 
-    [string[]]$param = "email","password","name","phone","role"
+    [string[]]$param = "email","password","name","phone","password_change_required","role","restricted_by_admin_units","status"
 
     $parameters = New-Object System.Collections.Hashtable
 
@@ -1137,6 +1199,133 @@ function duoCreateAdmin()
     try
     {
         $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoCreateAdminActivationLink()
+{
+    <# 
+     .Synopsis
+      Used to Create Administrator Activation Link
+
+     .Description
+      Create a link to the activation form for a new administrator with email address email. The administrator will not actually be created until the activation form is completed with further information (like the administrator’s name and phone number).
+
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Parameter email
+      Required 	Email address for the new administrator. Must not already be in use by any other administrator or pending administrator activation.
+      
+     .Parameter send_email
+      Optional integer. If set to “1”, the activation link and an introductory message will be emailed to the new administrator. If set to “0”, no email is sent, and the link is returned to the API method’s caller only. Default: “0”.
+
+      .Parameter valid_days
+      Optional integer. Number of days before the link expires. Default: 7. Maximum days: 31.
+      
+      .Parameter admin_role
+      Optional string. The administrator’s role. One of: “Owner”, “Administrator”, “Application Manager”, “User Manager”, “Help Desk”, “Billing”, “Phishing Manager”, or “Read-only”. The role names are case-sensitive. Defaults to “Owner” if not specified. Roles other than “Owner” are effective only if the customer edition includes the Administrative Roles feature.
+
+      https://duo.com/docs/adminapi#create-administrator-activation-link
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [Validatescript({_emailValidator -email $_})]
+            [string]$email,
+        [parameter(Mandatory=$false)]
+            [ValidateSet("0","1")]
+            [int]$send_email = 1,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,20)]
+            #[alias('aid','adminid')]
+            [int]$valid_days = 7,
+        [parameter(Mandatory=$false)]
+            [ValidateSet('Owner','Administrator','Application Manager',`
+                         'User Manager','Help Desk','Billing','Read-only' )]
+            [string]$admin_role = "Read-only"
+    )
+
+    [string]$path = "/admin/v1/admins/activations"
+
+
+        if ( ($email) )
+        {
+            Write-Verbose ("Creating: " + $email)
+        } else {
+            throw ("During Creation email is required")
+        }
+
+
+    [string[]]$param = "email","send_email","valid_days","admin_role"
+
+    $parameters = New-Object System.Collections.Hashtable
+
+    foreach ($p in $param)
+    {
+        if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+        {
+            if ((Get-Variable -Name $p -ValueOnly) -ne "")
+            {
+                $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+            }
+        }
+    }
+    
+    [string]$method = "POST"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
+function duoDeletePendingAdminActivation()
+{
+    <# 
+     .Synopsis
+      Used to delete the pending admin activation with ID admin_activation_id from the system.
+
+     .Description
+      Delete the pending admin activation with ID admin_activation_id from the system. admin_activation_id could be retrieved via duoGetPendingAdminActivations()
+
+     .Parameter dOrg
+      string representing configured Duo Org
+     
+      https://duo.com/docs/adminapi#delete-pending-administrator-activation
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(1,100)]
+            [string]$admin_activation_id        
+    )
+
+    [string]$path = "/admin/v1/admins/activations/$admin_activation_id"
+    
+    [string]$method = "DELETE"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
     }
     catch
     {
