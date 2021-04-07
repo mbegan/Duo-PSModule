@@ -878,6 +878,37 @@ function duoAssocUserToGroup()
     return $request
 }
 
+function duoRemoveUserFromGroup {
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$true)]
+            [alias('uid','userid')]
+            [ValidateLength(20,20)]
+            [String]$user_id,
+        [parameter(Mandatory=$true)]
+            [ValidateLength(20,20)]
+            [alias('gid','groupid')]
+            [String]$group_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/users/" + $user_id + "/groups/" + $group_id
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg
+    }
+    catch
+    {
+        throw $_
+    }
+    
+    return $request
+}
+
 function duoCreateUser()
 {
     param

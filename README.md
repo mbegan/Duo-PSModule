@@ -161,6 +161,7 @@ The commands implimented are listed below, if you have a specific use case ask a
 - duoGetToken
 - duoGetUser
 - duoGetUserBypass
+- duoRemoveUserFromGroup
 - duoSendSMSCodes
 - duoSoftTotpClient
 - duoSyncUser
