@@ -742,6 +742,73 @@ function duoGetUserBypass()
     return $request
 }
 
+function duoGetBypassCodes()
+    <# 
+     .Synopsis
+      Used to get all bypass codes from a given Duo Org
+
+     .Description
+      Returns a list of bypass code metadata associated with the Org
+
+     .Parameter dOrg
+      Optional string representing configured Duo Org, if omitted default org used
+
+     .Parameter limit
+      optional integer representing a page size for results
+      
+     .Example
+      duoGetBypassCodes 
+      
+      Returns bypass code data for the default Org
+           
+     .LINK
+      https://duo.com/docs/adminapi#retrieve-bypass-codes
+    #>
+
+{
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,10)]
+            [int]$count=1,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(0,100)]
+            [int]$reuse_count=5,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(0,86400)]
+            [int]$valid_secs=3600,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,500)]
+            [alias('pagesize')]
+            [int]$limit=100
+    )
+
+    $parameters = @{
+                    username    = $userName
+                    count       = $count
+                    valid_secs  = $valid_secs
+                    reuse_count = $reuse_count
+                    limit       = $limit
+                   }
+    
+    [string]$method = "GET"
+    [string]$path = "/admin/v1/bypass_codes"
+
+    try
+    {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path -parameters $parameters
+    }
+    catch
+    {
+        throw $_
+    }
+
+    return $request
+}
+
 function duoAssocUserToPhone()
 {
     param
