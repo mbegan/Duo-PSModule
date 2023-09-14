@@ -1704,6 +1704,75 @@ function duoGetGroup()
     return $request
 }
 
+function duoGetGroupMember()
+{
+    <# 
+     .Synopsis
+      Used to get group members from a given Group in a Duo Org
+
+     .Description
+      Returns a collection of user IDs along with their usernames
+
+     .Parameter limit
+      optional integer representing a page size for results
+      
+     .Parameter dOrg
+      string representing configured Duo Org
+
+     .Example
+      # Get all users from "prod" duo Org
+      duoGetGroupMember -group_id XXXXXXXXXXXXXXXXXXXX
+
+    #>
+    param
+    (
+        [parameter(Mandatory=$false)]
+            [ValidateLength(1,100)]
+            [String]$dOrg=$DuoDefaultOrg,
+        [parameter(Mandatory=$false)]
+            [ValidateLength(20,20)]
+            [alias('gid','groupid')]
+            [String]$group_id,
+        [parameter(Mandatory=$false)]
+            [ValidateRange(1,100)]
+            [alias('pagesize')]
+            [int]$limit
+    )
+	#/admin/v2/groups/[group_id]/users
+
+    [string[]]$param = "group_id","limit"
+    $parameters = New-Object System.Collections.Hashtable
+
+    [string]$method = "GET"
+    [string]$path = "/admin/v2/groups/$group_id/users"
+    if ($group_id -eq $null)
+    {
+        throw $_
+    } else {
+        foreach ($p in $param)
+        {
+            if (Get-Variable -Name $p -ErrorAction SilentlyContinue) 
+            {
+                if ((Get-Variable -Name $p -ValueOnly) -ne "")
+                {
+                    $parameters.Add($p,(Get-Variable -Name $p -ValueOnly))
+                }
+            }
+        }
+    }
+
+    try
+    {
+        $request = _duoBuildCall -method $method -path $path -dOrg $dOrg -parameters $parameters
+    }
+    catch
+    {
+        #Write-Warning $_.TargetObject
+        throw $_
+    }
+    return $request
+}
+
 function duoDeleteGroup()
 {
     param
