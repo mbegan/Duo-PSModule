@@ -1003,6 +1003,35 @@ function duoSyncUser()
     return $request
 }
 
+function duoDeletePhoneForUser() {
+    param
+    (
+        [parameter(Mandatory = $false)]
+        [ValidateLength(1, 100)]
+        [String]$dOrg = $DuoDefaultOrg,
+        [parameter(Mandatory = $true)]
+        [ValidateLength(20, 20)]
+        [alias('uid', 'userid')]
+        [String]$user_id,
+        [parameter(Mandatory = $true)]
+        [ValidateLength(20, 20)]
+        [alias('pid', 'phoneid')]
+        [String]$phone_id
+    )
+
+    [string]$method = "DELETE"
+    [string]$path = "/admin/v1/users/" + $user_id + "/phones/" + $phone_id
+
+    try {
+        $request = _duoBuildCall -method $method -dOrg $dOrg -path $path
+    }
+    catch {
+        throw $_
+    }
+
+    return $request
+}
+
 ###################Admins##################
 
 function duoGetAdmin()
